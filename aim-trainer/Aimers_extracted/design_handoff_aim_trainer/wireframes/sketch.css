@@ -1,0 +1,221 @@
+/* Sketchy wireframe primitives — shared across all artboards */
+
+:root {
+  --ink: #1a1612;
+  --ink-2: #4a4038;
+  --ink-3: #8a7d70;
+  --paper: #faf6ef;
+  --paper-2: #f0ead9;
+  --accent: #d94f2c;
+  --accent-soft: #f7c8b9;
+  --hand: "Patrick Hand", "Comic Sans MS", system-ui, sans-serif;
+  --display: "Caveat", "Patrick Hand", cursive;
+  --mono: "Courier Prime", "Courier New", monospace;
+}
+
+/* —— Reset inside artboards —— */
+.wf, .wf * { box-sizing: border-box; font-family: var(--hand); color: var(--ink); }
+.wf {
+  width: 100%; height: 100%;
+  background: var(--paper);
+  font-size: 15px; line-height: 1.25;
+  position: relative; overflow: hidden;
+  /* faint paper grain */
+  background-image:
+    radial-gradient(rgba(0,0,0,0.025) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+.wf-dark {
+  --ink: #f4ecdd;
+  --ink-2: #d0c4b2;
+  --ink-3: #7a7060;
+  --paper: #1a1714;
+  --paper-2: #261f1a;
+  background: var(--paper);
+  background-image: radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px);
+}
+
+/* —— Sketchy box. Slight rotation + double border to feel hand-drawn —— */
+.box {
+  border: 1.8px solid var(--ink);
+  border-radius: 4px 9px 5px 8px / 7px 4px 9px 5px;
+  position: relative;
+  background: transparent;
+}
+.box::after {
+  content: ""; position: absolute; inset: 1.5px;
+  border: 1px solid var(--ink);
+  border-radius: 7px 4px 8px 6px / 5px 8px 4px 7px;
+  opacity: 0.25; pointer-events: none;
+}
+.box-thin { border-width: 1.2px; }
+.box-thin::after { display: none; }
+.box-dash { border-style: dashed; }
+.box-dash::after { display: none; }
+.box-fill { background: var(--ink); color: var(--paper); }
+.box-fill * { color: var(--paper); }
+.box-soft { background: var(--paper-2); }
+.box-accent { border-color: var(--accent); color: var(--accent); }
+.box-accent::after { border-color: var(--accent); }
+
+/* Wiggly hand-drawn underline */
+.uline {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 6'><path d='M0 3 Q 7 0 15 3 T 30 3 T 45 3 T 60 3' stroke='%231a1612' fill='none' stroke-width='1.4'/></svg>");
+  background-repeat: repeat-x;
+  background-position: 0 100%;
+  background-size: 60px 6px;
+  padding-bottom: 4px;
+}
+.wf-dark .uline {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 6'><path d='M0 3 Q 7 0 15 3 T 30 3 T 45 3 T 60 3' stroke='%23f4ecdd' fill='none' stroke-width='1.4'/></svg>");
+}
+
+/* Hatched fill — for placeholder regions */
+.hatch {
+  background-image: repeating-linear-gradient(
+    -38deg,
+    transparent 0 6px,
+    rgba(26,22,18,0.18) 6px 7px
+  );
+}
+.wf-dark .hatch {
+  background-image: repeating-linear-gradient(
+    -38deg,
+    transparent 0 6px,
+    rgba(244,236,221,0.2) 6px 7px
+  );
+}
+.hatch-accent {
+  background-image: repeating-linear-gradient(
+    -38deg,
+    transparent 0 6px,
+    var(--accent-soft) 6px 8px
+  );
+}
+
+/* Scribbled bar (for fake progress / fake text) */
+.scribble {
+  height: 8px;
+  background: linear-gradient(var(--ink), var(--ink)) no-repeat;
+  background-size: 100% 1.4px;
+  background-position: 0 50%;
+  position: relative;
+}
+.scribble::before {
+  content: ""; position: absolute; inset: 0;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 8'><path d='M0 4 Q10 2 20 4 T40 4 T60 4 T80 4 T100 4 T120 4 T140 4 T160 4 T180 4 T200 4' stroke='%231a1612' fill='none' stroke-width='1.2'/></svg>");
+  background-size: 200px 8px;
+  background-repeat: repeat-x;
+  opacity: 0.55;
+}
+
+/* Pill button */
+.btn {
+  font-family: var(--hand);
+  border: 1.8px solid var(--ink);
+  border-radius: 18px 22px 20px 24px / 22px 18px 24px 20px;
+  padding: 6px 14px;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent;
+  cursor: default;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.btn-fill { background: var(--ink); color: var(--paper); }
+.btn-accent { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.btn-ghost { border-style: dashed; }
+.btn-sm { padding: 3px 10px; font-size: 13px; }
+
+/* Crosshair */
+.xhair {
+  width: 22px; height: 22px;
+  position: relative;
+  display: inline-block;
+}
+.xhair::before, .xhair::after {
+  content: ""; position: absolute; background: var(--ink);
+}
+.xhair::before { left: 50%; top: 0; bottom: 0; width: 1.5px; transform: translateX(-50%); }
+.xhair::after { top: 50%; left: 0; right: 0; height: 1.5px; transform: translateY(-50%); }
+.xhair-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--ink); position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); }
+
+/* Target dot */
+.target {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 1.8px solid var(--ink);
+  display: inline-block; position: relative;
+  background: var(--paper);
+}
+.target::after {
+  content: ""; position: absolute; inset: 5px; border-radius: 50%;
+  border: 1.5px solid var(--ink);
+}
+.target-fill { background: var(--ink); }
+.target-fill::after { border-color: var(--paper); }
+.target-accent { border-color: var(--accent); }
+.target-accent::after { border-color: var(--accent); }
+
+/* Mono number */
+.num { font-family: var(--mono); font-feature-settings: "tnum"; letter-spacing: -0.5px; }
+
+/* Layout helpers */
+.row { display: flex; align-items: center; }
+.col { display: flex; flex-direction: column; }
+.gap-1 { gap: 4px; } .gap-2 { gap: 8px; } .gap-3 { gap: 12px; } .gap-4 { gap: 18px; } .gap-6 { gap: 26px; }
+.flex-1 { flex: 1 1 0; min-width: 0; min-height: 0; }
+.full { width: 100%; height: 100%; }
+.center { align-items: center; justify-content: center; }
+.between { justify-content: space-between; }
+.tiny { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); font-family: var(--mono); }
+.mute { color: var(--ink-3); }
+.big { font-size: 28px; line-height: 1; }
+.huge { font-size: 56px; line-height: 0.9; font-family: var(--display); }
+.giga { font-size: 96px; line-height: 0.9; font-family: var(--display); }
+.disp { font-family: var(--display); }
+
+/* Annotation arrow / note */
+.note {
+  font-family: var(--display);
+  color: var(--accent);
+  font-size: 17px;
+  line-height: 1.05;
+  position: absolute;
+}
+.note::before {
+  content: "↳";
+  margin-right: 4px;
+  display: inline-block;
+}
+
+/* Sticker label corner */
+.stamp {
+  position: absolute; top: 8px; right: 8px;
+  font-family: var(--mono); font-size: 10px;
+  border: 1.2px solid var(--ink-3); color: var(--ink-3);
+  padding: 1px 6px; border-radius: 3px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+
+/* Window chrome — for desktop frames */
+.chrome {
+  height: 22px; border-bottom: 1.4px solid var(--ink);
+  display: flex; align-items: center; padding: 0 8px; gap: 5px;
+  font-family: var(--mono); font-size: 10px;
+  background: var(--paper-2);
+}
+.chrome .dot { width: 9px; height: 9px; border-radius: 50%; border: 1.2px solid var(--ink); }
+
+/* Outer artboard "frame" reset */
+.frame {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  border: 1.8px solid var(--ink);
+  background: var(--paper);
+  border-radius: 6px 9px 6px 10px / 10px 6px 9px 6px;
+  overflow: hidden;
+}
+.frame-screen {
+  flex: 1 1 0; min-height: 0;
+  position: relative;
+  display: flex; flex-direction: column;
+}

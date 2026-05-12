@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Aimers · Wireframes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="wireframes/gx.css" />
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #07090b; font-family: "Space Grotesk", system-ui, sans-serif; color: #e7eaef; }
+  #root { width: 100%; height: 100%; }
+  /* Override design canvas chrome typography */
+  .dc-labeltext, .dc-editable, [class*="dc-"] { font-family: "JetBrains Mono", ui-monospace, monospace !important; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="wireframes/common.jsx"></script>
+<script type="text/babel" src="wireframes/menu.jsx"></script>
+<script type="text/babel" src="wireframes/hud.jsx"></script>
+<script type="text/babel" src="wireframes/results.jsx"></script>
+<script type="text/babel" src="wireframes/stats.jsx"></script>
+<script type="text/babel" src="wireframes/onboarding.jsx"></script>
+
+<script type="text/babel">
+const TWEAKS = /*EDITMODE-BEGIN*/{
+  "theme": "graphite",
+  "accent": "#c8ff00",
+  "density": "comfy",
+  "showCorners": true,
+  "dark": true
+}/*EDITMODE-END*/;
+
+const ACCENTS = ["#c8ff00", "#22e6ff", "#ff3df0", "#ff7a1a"];
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAKS);
+
+  React.useEffect(() => {
+    const r = document.documentElement;
+    r.style.setProperty("--accent", t.accent);
+    // recompute the soft alpha variants from the accent
+    const hex = t.accent.replace("#","");
+    const R = parseInt(hex.slice(0,2),16), G = parseInt(hex.slice(2,4),16), B = parseInt(hex.slice(4,6),16);
+    r.style.setProperty("--accent-2", `rgba(${R},${G},${B},0.14)`);
+    r.style.setProperty("--accent-3", `rgba(${R},${G},${B},0.04)`);
+    document.body.classList.toggle("gx-dense", t.density === "dense");
+    document.body.classList.toggle("gx-no-corners", !t.showCorners);
+    document.body.classList.toggle("gx-platinum", t.theme === "platinum");
+  }, [t]);
+
+  const wfClass = t.theme === "platinum" ? "gx gx-light full" : "gx full";
+  const W = 720, H = 440;
+
+  return (
+    <React.Fragment>
+      <DesignCanvas>
+        <DCSection id="menu" title="① Main menu / mode select" subtitle="catalog · list · home · launcher">
+          <DCArtboard id="m-a" label="A · Catalog grid" width={W} height={H}><div className={wfClass}><Menu_A /></div></DCArtboard>
+          <DCArtboard id="m-b" label="B · List + detail" width={W} height={H}><div className={wfClass}><Menu_B /></div></DCArtboard>
+          <DCArtboard id="m-c" label="C · Home feed" width={W} height={H}><div className={wfClass}><Menu_C /></div></DCArtboard>
+          <DCArtboard id="m-d" label="D · ⌘K launcher ✦" width={W} height={H}><div className={wfClass}><Menu_D /></div></DCArtboard>
+        </DCSection>
+
+        <DCSection id="hud" title="② In-game HUD" subtitle="info during a run">
+          <DCArtboard id="h-a" label="A · Minimal corners" width={W} height={H}><div className={wfClass}><HUD_A /></div></DCArtboard>
+          <DCArtboard id="h-b" label="B · Crosshair gauges" width={W} height={H}><div className={wfClass}><HUD_B /></div></DCArtboard>
+          <DCArtboard id="h-c" label="C · Dense rail" width={W} height={H}><div className={wfClass}><HUD_C /></div></DCArtboard>
+          <DCArtboard id="h-d" label="D · Shot timeline ✦" width={W} height={H}><div className={wfClass}><HUD_D /></div></DCArtboard>
+        </DCSection>
+
+        <DCSection id="results" title="③ Results / score" subtitle="post-run reward + signal">
+          <DCArtboard id="r-a" label="A · Big-number hero" width={W} height={H}><div className={wfClass}><Results_A /></div></DCArtboard>
+          <DCArtboard id="r-b" label="B · Stats breakdown" width={W} height={H}><div className={wfClass}><Results_B /></div></DCArtboard>
+          <DCArtboard id="r-c" label="C · Vs last 10" width={W} height={H}><div className={wfClass}><Results_C /></div></DCArtboard>
+          <DCArtboard id="r-d" label="D · Per-shot replay ✦" width={W} height={H}><div className={wfClass}><Results_D /></div></DCArtboard>
+        </DCSection>
+
+        <DCSection id="stats" title="④ Stats & progression" subtitle="the meta-game">
+          <DCArtboard id="s-a" label="A · Sparkline dash" width={W} height={H}><div className={wfClass}><Stats_A /></div></DCArtboard>
+          <DCArtboard id="s-b" label="B · Heatmap weakness" width={W} height={H}><div className={wfClass}><Stats_B /></div></DCArtboard>
+          <DCArtboard id="s-c" label="C · Streak calendar" width={W} height={H}><div className={wfClass}><Stats_C /></div></DCArtboard>
+          <DCArtboard id="s-d" label="D · Radar + ladder ✦" width={W} height={H}><div className={wfClass}><Stats_D /></div></DCArtboard>
+        </DCSection>
+
+        <DCSection id="onboard" title="⑤ Onboarding & calibration" subtitle="first-run · sens · level">
+          <DCArtboard id="o-a" label="A · Sens drag" width={W} height={H}><div className={wfClass}><Onboard_A /></div></DCArtboard>
+          <DCArtboard id="o-b" label="B · Skill assessment" width={W} height={H}><div className={wfClass}><Onboard_B /></div></DCArtboard>
+          <DCArtboard id="o-c" label="C · Pick your games" width={W} height={H}><div className={wfClass}><Onboard_C /></div></DCArtboard>
+          <DCArtboard id="o-d" label="D · Live benchmark ✦" width={W} height={H}><div className={wfClass}><Onboard_D /></div></DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Theme">
+          <TweakRadio label="Surface" value={t.theme} options={["graphite","platinum"]} onChange={(v) => setTweak("theme", v)} />
+          <TweakColor label="Accent" value={t.accent} options={ACCENTS} onChange={(v) => setTweak("accent", v)} />
+        </TweakSection>
+        <TweakSection label="Density">
+          <TweakRadio label="Spacing" value={t.density} options={["comfy","dense"]} onChange={(v) => setTweak("density", v)} />
+          <TweakToggle label="Corner brackets" value={t.showCorners} onChange={(v) => setTweak("showCorners", v)} />
+        </TweakSection>
+      </TweaksPanel>
+    </React.Fragment>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+
+<style>
+  /* Tweak-driven overrides */
+  .gx-dense .gx { font-size: 11px !important; }
+  .gx-dense .gx .card { padding: 10px !important; }
+  .gx-no-corners .playfield::before { display: none !important; }
+</style>
+
+</body>
+</html>
