@@ -11,13 +11,13 @@ import type { TaskConfig } from '../types'
 type RoundStatus = 'idle' | 'running' | 'ended'
 type SettingsTab = 'dot' | 'background' | 'mouse' | 'crosshair'
 
-type HitFlash = {
-  x: number
-  y: number
-  z: number
-  baseR: number
-  hitAt: number
-}
+// type HitFlash = {
+//   x: number
+//   y: number
+//   z: number
+//   baseR: number
+//   hitAt: number
+// }
 
 type Dot = {
   id: number
@@ -40,7 +40,7 @@ const DOT_Z_MAX = 7
 const DOT_R_BASE_MIN = 7
 const DOT_R_BASE_MAX = 14
 const HIT_PADDING_PX = 10
-const HIT_FLASH_MS = 160
+// const HIT_FLASH_MS = 160
 
 type CrosshairConfig = {
   color: string
