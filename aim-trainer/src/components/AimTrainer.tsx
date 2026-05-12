@@ -7,6 +7,7 @@ import {
   VALORANT_YAW,
 } from '../constants'
 import type { TaskConfig } from '../types'
+import { ThreeBackground } from '../renderer/ThreeBackground'
 
 type RoundStatus = 'idle' | 'running' | 'ended'
 type SettingsTab = 'dot' | 'background' | 'mouse' | 'crosshair'
@@ -114,9 +115,20 @@ export default function AimTrainer({ task, onBack }: Props) {
   const sizeRef = useRef({ w: 0, h: 0, dpr: 1 })
   const countdownRef = useRef<number | null>(null)
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const threeBackgroundRef = useRef<ThreeBackground | null>(null)
+
+  // Game stats refs
+  const hitsRef = useRef(0)
+  const missesRef = useRef(0)
+  const currentStreakRef = useRef(0)
+  const maxStreakRef = useRef(0)
 
   // Draft UI state (settings modal)
   const [score, setScore] = useState(0)
+  const [hits, setHits] = useState(0)
+  const [misses, setMisses] = useState(0)
+  const [maxStreak, setMaxStreak] = useState(0)
+  const [roundEnded, setRoundEnded] = useState(false)
   const [timeLeftSec, setTimeLeftSec] = useState(task.roundDuration)
   const [activeTab, setActiveTab] = useState<SettingsTab>('dot')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -188,8 +200,16 @@ export default function AimTrainer({ task, onBack }: Props) {
     statusRef.current = 'idle'
     scoreRef.current = 0
     trackingScoreAccRef.current = 0
+    hitsRef.current = 0
+    missesRef.current = 0
+    currentStreakRef.current = 0
+    maxStreakRef.current = 0
     timeLeftSecRef.current = taskRef.current.roundDuration
     setScore(0)
+    setHits(0)
+    setMisses(0)
+    setMaxStreak(0)
+    setRoundEnded(false)
     setTimeLeftSec(taskRef.current.roundDuration)
     endAtRef.current = 0
     nextSpawnAtRef.current = 0
@@ -205,8 +225,16 @@ export default function AimTrainer({ task, onBack }: Props) {
     statusRef.current = 'running'
     scoreRef.current = 0
     trackingScoreAccRef.current = 0
+    hitsRef.current = 0
+    missesRef.current = 0
+    currentStreakRef.current = 0
+    maxStreakRef.current = 0
     timeLeftSecRef.current = t.roundDuration
     setScore(0)
+    setHits(0)
+    setMisses(0)
+    setMaxStreak(0)
+    setRoundEnded(false)
     setTimeLeftSec(t.roundDuration)
     dotsRef.current = []
     panRef.current = { x: 0, y: 0 }
@@ -266,9 +294,19 @@ export default function AimTrainer({ task, onBack }: Props) {
     if (bestIdx >= 0) {
       dots.splice(bestIdx, 1)
       crosshairHitFlashRef.current = performance.now()
+      hitsRef.current++
+      currentStreakRef.current++
+      if (currentStreakRef.current > maxStreakRef.current) {
+        maxStreakRef.current = currentStreakRef.current
+        setMaxStreak(maxStreakRef.current)
+      }
+      setHits(hitsRef.current)
       setScore((s) => { const n = s + t.hitScore; scoreRef.current = n; return n })
     } else {
       if (dots.length > 0) dots.splice(0, dots.length)
+      missesRef.current++
+      currentStreakRef.current = 0
+      setMisses(missesRef.current)
       setScore((s) => { const n = s - t.missPenalty; scoreRef.current = n; return n })
     }
 
@@ -312,6 +350,22 @@ export default function AimTrainer({ task, onBack }: Props) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    // Initialise Three.js background and mount its canvas behind the 2D canvas
+    const bg3 = new ThreeBackground()
+    threeBackgroundRef.current = bg3
+    const wrap = canvas.parentElement
+    if (wrap) {
+      const bc = bg3.canvas
+      bc.style.position = 'absolute'
+      bc.style.top = '0'
+      bc.style.left = '0'
+      bc.style.width = '100%'
+      bc.style.height = '100%'
+      bc.style.pointerEvents = 'none'
+      bc.style.zIndex = '0'
+      wrap.insertBefore(bc, canvas)   // insert BEFORE 2D canvas so it's behind
+    }
+
     const resize = () => {
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.max(1, Math.floor((window.devicePixelRatio || 1) * 100) / 100)
@@ -319,6 +373,7 @@ export default function AimTrainer({ task, onBack }: Props) {
       canvas.height = Math.max(1, Math.floor(rect.height * dpr))
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       sizeRef.current = { w: rect.width, h: rect.height, dpr }
+      bg3.resize(rect.width, rect.height)
     }
 
     resize()
@@ -411,111 +466,31 @@ export default function AimTrainer({ task, onBack }: Props) {
           statusRef.current = 'ended'
           timeLeftSecRef.current = 0
           setTimeLeftSec(0)
+          setRoundEnded(true)
           dotsRef.current = []
         }
       }
 
       // ── Draw ──
-      ctx.clearRect(0, 0, w, h)
-
       const pan = panRef.current
 
-      // Background gradient
-      const bg = ctx.createRadialGradient(centerX, centerY, Math.max(10, Math.min(w, h) * 0.02), centerX, centerY, Math.max(w, h) * 0.78)
-      bg.addColorStop(0, 'rgba(10, 24, 68, 0.9)')
-      bg.addColorStop(0.45, 'rgba(4, 10, 28, 0.96)')
-      bg.addColorStop(1, 'rgba(0, 0, 0, 1)')
-      ctx.fillStyle = '#000'
-      ctx.fillRect(0, 0, w, h)
-      ctx.fillStyle = bg
-      ctx.fillRect(0, 0, w, h)
+      // Three.js background renders its own canvas; just clear the 2D overlay
+      bg3.render(pan, now)
+      ctx.clearRect(0, 0, w, h)
 
-      // Tunnel
-      const tunnelWidth = w * 0.96
-      const tunnelHeight = h * 0.94
-      const vanishingX = centerX - pan.x * (0.08 * bgDepthRef.current)
-      const vanishingY = centerY - pan.y * (0.08 * bgDepthRef.current)
-      const layers = Math.round(10 + bgDepthRef.current * 6)
-
-      ctx.save()
-      ctx.lineWidth = 1
-      for (let i = 0; i < layers; i++) {
-        const tt = i / (layers - 1)
-        const depth = tt * tt
-        const rw = tunnelWidth * (1 - depth * 0.88)
-        const rh = tunnelHeight * (1 - depth * 0.88)
-        ctx.strokeStyle = `rgba(70, 170, 255, ${0.1 + (1 - tt) * 0.24})`
-        ctx.strokeRect(vanishingX - rw / 2, vanishingY - rh / 2, rw, rh)
-      }
-
-      const verticalLines = 24
-      const horizontalLines = 16
-      for (let i = 0; i <= verticalLines; i++) {
-        const x = (i / verticalLines) * tunnelWidth + (centerX - tunnelWidth / 2)
-        ctx.beginPath(); ctx.moveTo(x, centerY - tunnelHeight / 2); ctx.lineTo(vanishingX + (x - centerX) * 0.12, vanishingY - tunnelHeight * 0.05)
-        ctx.strokeStyle = 'rgba(70, 170, 255, 0.18)'; ctx.stroke()
-        ctx.beginPath(); ctx.moveTo(x, centerY + tunnelHeight / 2); ctx.lineTo(vanishingX + (x - centerX) * 0.12, vanishingY + tunnelHeight * 0.05)
-        ctx.stroke()
-      }
-      for (let i = 0; i <= horizontalLines; i++) {
-        const y = (i / horizontalLines) * tunnelHeight + (centerY - tunnelHeight / 2)
-        ctx.beginPath(); ctx.moveTo(centerX - tunnelWidth / 2, y); ctx.lineTo(vanishingX - tunnelWidth * 0.05, vanishingY + (y - centerY) * 0.12)
-        ctx.strokeStyle = 'rgba(70, 170, 255, 0.14)'; ctx.stroke()
-        ctx.beginPath(); ctx.moveTo(centerX + tunnelWidth / 2, y); ctx.lineTo(vanishingX + tunnelWidth * 0.05, vanishingY + (y - centerY) * 0.12)
-        ctx.stroke()
-      }
-
-      // Light streaks
-      for (let i = 0; i < 10; i++) {
-        const px = ((i * 127 + Math.floor(now * 0.08)) % (w + 180)) - 90
-        const py = ((i * 83 + Math.floor(now * 0.05)) % (h + 140)) - 70
-        const glow = ctx.createLinearGradient(px - 28, py, px + 28, py)
-        glow.addColorStop(0, 'rgba(0,0,0,0)')
-        glow.addColorStop(0.5, 'rgba(90,210,255,0.22)')
-        glow.addColorStop(1, 'rgba(0,0,0,0)')
-        ctx.strokeStyle = glow; ctx.lineWidth = 5
-        ctx.beginPath(); ctx.moveTo(px - 24, py); ctx.lineTo(px + 24, py); ctx.stroke()
-      }
-      ctx.restore()
-
-      // Dots
+      // Dots — Canvas 2D radial-gradient spheres (Phong-look)
       for (let di = 0; di < dotsRef.current.length; di++) {
         const d = dotsRef.current[di]
         const sx = centerX + (d.x - pan.x) / d.z
         const sy = centerY + (d.y - pan.y) / d.z
-        const r = d.baseR / d.z
+        let r = d.baseR / d.z
         if (sx + r < 0 || sx - r > w || sy + r < 0 || sy - r > h) continue
-
-        const depth01 = Math.max(0, Math.min(1, (DOT_Z_MAX - d.z) / (DOT_Z_MAX - DOT_Z_MIN)))
-        const coreAlpha = 0.75 + depth01 * 0.25
-        const glowAlpha = 0.12 + depth01 * 0.18
-        const isHovered = di === onTargetIdx
-        const rgb = isHovered ? { r: 255, g: 220, b: 0 } : hexToRgb(dotColorRef.current)
-
-        // Lifetime warning pulse (flashes when < 30% lifetime remains)
-        let sizeBoost = 0
         if (t.targetLifetime > 0) {
           const remaining = t.targetLifetime - (now - d.spawnedAt) / 1000
-          if (remaining < t.targetLifetime * 0.3) {
-            sizeBoost = Math.sin(now * 0.02) * 2
-          }
+          if (remaining < t.targetLifetime * 0.3) r += Math.sin(now * 0.02) * 2
         }
-
-        ctx.beginPath()
-        ctx.arc(sx, sy, r + 6 + sizeBoost, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${glowAlpha})`
-        ctx.fill()
-
-        ctx.beginPath()
-        ctx.arc(sx, sy, Math.max(1.3, r + sizeBoost), 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${coreAlpha})`
-        ctx.fill()
-
-        ctx.beginPath()
-        ctx.arc(sx, sy, Math.max(1.3, r + sizeBoost), 0, Math.PI * 2)
-        ctx.strokeStyle = `rgba(255,255,255,${0.15 + depth01 * 0.25})`
-        ctx.lineWidth = Math.max(1, r * 0.08)
-        ctx.stroke()
+        const isHovered = di === onTargetIdx
+        drawSphere3D(ctx, sx, sy, r, dotColorRef.current, isHovered, now)
       }
 
       // Crosshair (hidden during countdown)
@@ -538,24 +513,15 @@ export default function AimTrainer({ task, onBack }: Props) {
         ctx.fillStyle = 'rgba(255,255,255,0.92)'
         ctx.fillText(String(cd), centerX, centerY)
         ctx.restore()
-      } else if (statusNow !== 'running') {
+      } else if (statusNow === 'idle') {
         ctx.save()
         ctx.fillStyle = 'rgba(255,255,255,0.9)'
         ctx.textAlign = 'center'
         ctx.font = '600 26px system-ui, Segoe UI, Roboto, sans-serif'
-        if (statusNow === 'ended') {
-          ctx.fillText('Round over', w / 2, h / 2 - 14)
-          ctx.font = '500 20px system-ui, Segoe UI, Roboto, sans-serif'
-          ctx.fillText(`Score: ${scoreRef.current}`, w / 2, h / 2 + 22)
-          ctx.font = '400 15px system-ui, Segoe UI, Roboto, sans-serif'
-          ctx.fillStyle = 'rgba(255,255,255,0.45)'
-          ctx.fillText('Click or press R to play again', w / 2, h / 2 + 56)
-        } else {
-          ctx.fillText(taskRef.current.name, w / 2, h / 2 - 14)
-          ctx.font = '400 17px system-ui, Segoe UI, Roboto, sans-serif'
-          ctx.fillStyle = 'rgba(255,255,255,0.55)'
-          ctx.fillText('Click to lock cursor & start', w / 2, h / 2 + 22)
-        }
+        ctx.fillText(taskRef.current.name, w / 2, h / 2 - 14)
+        ctx.font = '400 17px system-ui, Segoe UI, Roboto, sans-serif'
+        ctx.fillStyle = 'rgba(255,255,255,0.45)'
+        ctx.fillText('Click to lock cursor & start', w / 2, h / 2 + 22)
         ctx.restore()
       }
 
@@ -563,7 +529,7 @@ export default function AimTrainer({ task, onBack }: Props) {
     }
 
     rafId = requestAnimationFrame(tick)
-    return () => { ro.disconnect(); cancelAnimationFrame(rafId) }
+    return () => { ro.disconnect(); cancelAnimationFrame(rafId); bg3.dispose() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -686,26 +652,91 @@ export default function AimTrainer({ task, onBack }: Props) {
     crosshairRef.current = DEFAULT_CROSSHAIR
   }
 
+  const accuracy = hits + misses > 0 ? Math.round((hits / (hits + misses)) * 100) : 0
+
   return (
     <div className="aimApp">
-      <div className="aimTopBar">
-        <div className="aimStat">
-          <div className="aimLabel">Score</div>
-          <div className="aimValue">{score}</div>
+      {/* HUD_A — minimal corners overlay */}
+      <div className="aimHud">
+        <div className="aimHudTopLeft">
+          <div className="aimHudLabel">score</div>
+          <div className="aimHudValue">{score.toLocaleString()}</div>
         </div>
-        <div className="aimStat aimStatCenter">
-          <div className="aimLabel">Time</div>
-          <div className="aimValue">{pad2(timeLeftSec)}</div>
+        <div className="aimHudTopCenter">
+          <div className="aimHudLabel">time</div>
+          <div className={`aimHudValue aimHudValueLg${timeLeftSec <= 10 ? ' aimHudValueAccent' : ''}`}>
+            {pad2(Math.floor(timeLeftSec / 60))}:{pad2(timeLeftSec % 60)}
+          </div>
         </div>
-        <div className="aimActions">
-          <button type="button" className="aimSettingsBtn" onClick={onBack} aria-label="Back to menu">
+        <div className="aimHudBottomRight">
+          <div className="aimHudStatGroup">
+            <div className="aimHudLabel">acc</div>
+            <div className="aimHudValue" style={{ fontSize: 18 }}>{accuracy}%</div>
+          </div>
+          <div className="aimHudStatGroup">
+            <div className="aimHudLabel">streak</div>
+            <div className="aimHudValue aimHudValueAccent" style={{ fontSize: 18 }}>×{maxStreak}</div>
+          </div>
+        </div>
+        <div className="aimHudActions">
+          <button type="button" className="aimIconBtn" onClick={onBack} aria-label="Back to menu">
             <i className="fa-solid fa-arrow-left" />
           </button>
-          <button type="button" className="aimSettingsBtn" onClick={() => setSettingsOpen(true)} aria-label="Open settings">
+          <button type="button" className="aimIconBtn" onClick={() => setSettingsOpen(true)} aria-label="Open settings">
             <i className="fa-solid fa-gear" />
           </button>
         </div>
       </div>
+
+      {/* Results overlay */}
+      {roundEnded && (
+        <div className="aimResultsOverlay">
+          <div className="aimResultsCard">
+            <div className="aimResultsDrillLabel">{task.name} · {task.roundDuration}s · run complete</div>
+            <div className="aimResultsScore">{score.toLocaleString()}</div>
+            <div className="aimResultsScoreLabel">score</div>
+            <div className="aimResultsKpis">
+              <div className="aimResultsKpi">
+                <div className="aimHudLabel">accuracy</div>
+                <div className="aimResultsKpiValue">{accuracy}%</div>
+              </div>
+              <div className="aimResultsKpiDivider" />
+              <div className="aimResultsKpi">
+                <div className="aimHudLabel">hits</div>
+                <div className="aimResultsKpiValue">{hits}</div>
+              </div>
+              <div className="aimResultsKpiDivider" />
+              <div className="aimResultsKpi">
+                <div className="aimHudLabel">best streak</div>
+                <div className="aimResultsKpiValue">×{maxStreak}</div>
+              </div>
+            </div>
+            <div className="aimResultsActions">
+              <button
+                type="button"
+                className="gxBtn isSm"
+                onClick={() => { resetRound(); startCountdown() }}
+              >
+                [R] retry
+              </button>
+              <button
+                type="button"
+                className="gxBtn isSm"
+                onClick={onBack}
+              >
+                menu
+              </button>
+              <button
+                type="button"
+                className="gxBtn isSm isPrimary"
+                onClick={() => { resetRound(); startCountdown() }}
+              >
+                play again ▸
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {settingsOpen && (
         <div className="aimModalOverlay" onClick={() => setSettingsOpen(false)}>
@@ -861,6 +892,7 @@ export default function AimTrainer({ task, onBack }: Props) {
               </div>
             )}
             <div className="aimModalFooter">
+            \
               <button type="button" className="aimModalResetBtn" onClick={resetSettings}>Reset</button>
               <button type="button" className="aimModalApplyBtn" onClick={applySettings}>Apply</button>
             </div>
@@ -927,4 +959,46 @@ function hexToRgb(hex: string) {
   const normalized = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean
   const num = Number.parseInt(normalized, 16)
   return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 }
+}
+
+function drawSphere3D(
+  ctx: CanvasRenderingContext2D,
+  sx: number, sy: number, r: number,
+  hex: string,
+  active: boolean,
+  now: number,
+) {
+  const { r: rv, g: gv, b: bv } = hexToRgb(hex)
+
+  // Active glow ring behind sphere
+  if (active) {
+    const pulse = 0.5 + 0.5 * Math.sin(now * 0.006)
+    const glow = ctx.createRadialGradient(sx, sy, r * 0.85, sx, sy, r * 1.45)
+    glow.addColorStop(0, `rgba(255,220,0,${(0.25 + pulse * 0.3).toFixed(2)})`)
+    glow.addColorStop(1, 'rgba(255,220,0,0)')
+    ctx.beginPath(); ctx.arc(sx, sy, r * 1.45, 0, Math.PI * 2)
+    ctx.fillStyle = glow; ctx.fill()
+  }
+
+  // Sphere body — radial gradient simulating Phong lighting
+  // Light source: upper-left-front → highlight offset
+  const hx = sx - r * 0.30
+  const hy = sy - r * 0.34
+  const lit  = (c: number) => Math.min(255, Math.round(c + 70))
+  const dark = (c: number) => Math.round(c * 0.22)
+  const grd = ctx.createRadialGradient(hx, hy, r * 0.02, sx, sy, r)
+  grd.addColorStop(0,    'rgba(255,255,255,0.92)')
+  grd.addColorStop(0.18, `rgb(${lit(rv)},${lit(gv)},${lit(bv)})`)
+  grd.addColorStop(0.62, `rgb(${rv},${gv},${bv})`)
+  grd.addColorStop(1,    `rgb(${dark(rv)},${dark(gv)},${dark(bv)})`)
+  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2)
+  ctx.fillStyle = grd; ctx.fill()
+
+  // Rim highlight (thin bright crescent at upper-left edge)
+  const rim = ctx.createRadialGradient(hx - r * 0.1, hy - r * 0.1, r * 0.6, sx, sy, r)
+  rim.addColorStop(0,   'rgba(255,255,255,0)')
+  rim.addColorStop(0.8, 'rgba(255,255,255,0)')
+  rim.addColorStop(1,   'rgba(255,255,255,0.18)')
+  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2)
+  ctx.fillStyle = rim; ctx.fill()
 }
