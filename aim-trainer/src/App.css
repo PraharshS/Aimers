@@ -1032,6 +1032,286 @@
 
 .tcNumInput:focus { border-color: var(--line-3); }
 
+/* ── Auth modal ── */
+.authModal {
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  padding: 0;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.authTabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  padding: 0 20px;
+}
+
+.authTab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 10px 14px 9px;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.authTab.isActive { color: var(--accent); border-bottom-color: var(--accent); }
+
+.authForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+}
+
+.authField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.authError {
+  color: var(--danger);
+  font-size: 12px;
+  margin: 0;
+}
+
+.authSubmitBtn {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+/* ── Topbar auth section ── */
+.gxTopbarAuth {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+}
+
+/* ── Full-page views (Profile, Leaderboard) ── */
+.fullPage {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 0 0 40px;
+}
+
+.fullPageHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.fullPageTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0;
+  flex: 1;
+  text-align: center;
+}
+
+/* ── Leaderboard ── */
+.lbTaskFilter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 20px 24px 0;
+}
+
+.lbFilterBtn {
+  appearance: none;
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+  border-radius: 2px;
+  color: var(--text-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 12px;
+  transition: all 0.15s;
+}
+
+.lbFilterBtn:hover { color: var(--text); border-color: var(--line-3); }
+.lbFilterBtn.isActive { background: var(--accent-2); border-color: var(--accent); color: var(--accent); }
+
+.lbTableWrap {
+  padding: 20px 24px;
+  overflow-x: auto;
+}
+
+.lbEmpty {
+  text-align: center;
+  color: var(--text-3);
+  font-size: 13px;
+  padding: 40px 0;
+}
+
+.lbTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.lbTable th {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.lbTable td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.lbTable tr:last-child td { border-bottom: none; }
+.lbTable tr:hover td { background: var(--bg-3); }
+
+.lbTop1 td { color: #ffd700; }
+.lbTop2 td { color: #c0c0c0; }
+.lbTop3 td { color: #cd7f32; }
+
+.lbRank { font-family: var(--mono); font-size: 12px; width: 40px; }
+.lbPlayer { font-weight: 600; }
+.lbTask { color: var(--text-2); }
+.lbScore { font-family: var(--mono); font-weight: 700; color: var(--accent); }
+.lbAccuracy { font-family: var(--mono); color: var(--text-2); }
+.lbDate { color: var(--text-3); font-size: 11px; }
+
+/* ── Profile ── */
+.profileWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.profileCard {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 20px;
+}
+
+.profileIdentity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.profileAvatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profileInfo { display: flex; flex-direction: column; gap: 3px; }
+
+.profileUsername {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.profileMeta { font-size: 12px; color: var(--text-3); margin: 0; }
+
+.profileStats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 600px) { .profileStats { grid-template-columns: repeat(2, 1fr); } }
+
+.profileStatTile {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.profileStatIcon { color: var(--accent); font-size: 16px; }
+.profileStatValue { font-size: 22px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+.profileStatLabel { font-size: 11px; color: var(--text-3); text-align: center; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.profileSectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0 0 14px;
+}
+
+.profileTaskGrid { display: flex; flex-direction: column; gap: 8px; }
+
+.profileTaskRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-3);
+  border: 1px solid transparent;
+  border-radius: 2px;
+}
+
+.profileTaskIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.profileTaskName { flex: 1; font-size: 13px; color: var(--text); }
+.profileTaskScore { font-family: var(--mono); font-weight: 700; font-size: 15px; min-width: 50px; text-align: right; }
+.profileTaskAcc { font-family: var(--mono); font-size: 12px; color: var(--text-3); min-width: 42px; text-align: right; }
+.profileTaskEmpty { font-size: 12px; color: var(--text-3); }
+
 /* ── Background picker ── */
 .aimBgPanel { display: flex; flex-direction: column; gap: 10px; width: 100%; }
 

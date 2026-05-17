@@ -8,6 +8,8 @@ import {
 import type { TaskConfig } from '../types'
 import { ThreeBackground } from '../renderer/ThreeBackground'
 import type { BackgroundType } from '../renderer/ThreeBackground'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 
 const BACKGROUNDS: { id: BackgroundType; name: string; desc: string; grad: string }[] = [
   { id: 'tunnel', name: 'Cyber Tunnel', desc: 'Wireframe corridor',      grad: 'linear-gradient(135deg,#050a10 40%,#1a5580)' },
@@ -142,7 +144,9 @@ export default function AimTrainer({ task, onBack }: Props) {
   const [dotSize, setDotSize] = useState(task.targetSize)
   const [dotDepth, setDotDepth] = useState(task.targetDepth)
   const [dotColor, setDotColor] = useState(task.targetColor)
-  const [backgroundType, setBackgroundType] = useState<BackgroundType>('tunnel')
+  const [backgroundType, setBackgroundType] = useState<BackgroundType>(
+    () => (localStorage.getItem('aimers-bg') as BackgroundType | null) ?? 'tunnel'
+  )
   const [dpi, setDpi] = useState(DEFAULT_DPI)
   const [valorantSens, setValorantSens] = useState(DEFAULT_VALORANT_SENS)
 
@@ -157,6 +161,36 @@ export default function AimTrainer({ task, onBack }: Props) {
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null)
 
   const [crosshairDraft, setCrosshairDraft] = useState<CrosshairConfig>(DEFAULT_CROSSHAIR)
+
+  const { user, profile } = useAuth()
+
+  // Load DPI / sens from profile when it becomes available (overrides localStorage)
+  useEffect(() => {
+    if (!profile) return
+    const d = profile.dpi ?? DEFAULT_DPI
+    const s = profile.valorant_sens ?? DEFAULT_VALORANT_SENS
+    setDpi(d)
+    setValorantSens(s)
+    const mult = (d * s * VALORANT_YAW) / SENS_BASE_SCALE
+    sensMultiplierRef.current = isFinite(mult) ? mult : 1.0
+  }, [profile])
+
+  // Save score to Supabase when round ends (only if signed in)
+  useEffect(() => {
+    if (!roundEnded || !user) return
+    const totalShots = hitsRef.current + missesRef.current
+    const accuracy = totalShots > 0 ? hitsRef.current / totalShots : 0
+    supabase.from('scores').insert({
+      user_id: user.id,
+      task_id: taskRef.current.id,
+      task_name: taskRef.current.name,
+      score: scoreRef.current,
+      hits: hitsRef.current,
+      misses: missesRef.current,
+      accuracy,
+      duration: taskRef.current.roundDuration,
+    })
+  }, [roundEnded, user])
 
   const spawnDot = (id: number): Dot => {
     const { w, h } = sizeRef.current
@@ -490,6 +524,7 @@ export default function AimTrainer({ task, onBack }: Props) {
         const sx = centerX + (d.x - pan.x) / d.z
         const sy = centerY + (d.y - pan.y) / d.z
         let r = d.baseR / d.z
+        if (!isFinite(sx) || !isFinite(sy) || !isFinite(r)) continue
         if (sx + r < 0 || sx - r > w || sy + r < 0 || sy - r > h) continue
         if (t.targetLifetime > 0) {
           const remaining = t.targetLifetime - (now - d.spawnedAt) / 1000
@@ -645,6 +680,10 @@ export default function AimTrainer({ task, onBack }: Props) {
     dotColorRef.current = dotColor
     sensMultiplierRef.current = (dpi * valorantSens * VALORANT_YAW) / SENS_BASE_SCALE
     crosshairRef.current = crosshairDraft
+    localStorage.setItem('aimers-bg', backgroundType)
+    if (user) {
+      supabase.from('profiles').update({ dpi, valorant_sens: valorantSens }).eq('id', user.id)
+    }
     setSettingsOpen(false)
   }
 

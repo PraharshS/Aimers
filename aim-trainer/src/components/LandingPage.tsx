@@ -2,10 +2,15 @@ import { useEffect, useState } from 'react'
 import type { TaskConfig } from '../types'
 import { BUILT_IN_TASKS } from '../types'
 import { deleteCustomTask, loadCustomTasks } from '../taskStorage'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
+import AuthModal from './AuthModal'
 
 type Props = {
   onSelectTask: (task: TaskConfig) => void
   onOpenCreator: () => void
+  onViewProfile: () => void
+  onViewLeaderboard: () => void
 }
 
 function DrillIcon({ taskId, size = 18 }: { taskId: string; size?: number }) {
@@ -55,12 +60,30 @@ function DrillIcon({ taskId, size = 18 }: { taskId: string; size?: number }) {
   )
 }
 
-export default function LandingPage({ onSelectTask, onOpenCreator }: Props) {
+export default function LandingPage({ onSelectTask, onOpenCreator, onViewProfile, onViewLeaderboard }: Props) {
+  const { user, profile, signOut } = useAuth()
   const [customTasks, setCustomTasks] = useState<TaskConfig[]>([])
+  const [authOpen, setAuthOpen] = useState(false)
+  const [pbMap, setPbMap] = useState<Record<string, number>>({})
 
   useEffect(() => {
     setCustomTasks(loadCustomTasks())
   }, [])
+
+  useEffect(() => {
+    if (!user) { setPbMap({}); return }
+    supabase
+      .from('scores')
+      .select('task_id, score')
+      .eq('user_id', user.id)
+      .then(({ data }) => {
+        const best: Record<string, number> = {}
+        for (const row of data ?? []) {
+          if (!best[row.task_id] || row.score > best[row.task_id]) best[row.task_id] = row.score
+        }
+        setPbMap(best)
+      })
+  }, [user])
 
   const refresh = () => setCustomTasks(loadCustomTasks())
 
@@ -82,7 +105,33 @@ export default function LandingPage({ onSelectTask, onOpenCreator }: Props) {
         <div style={{ flex: 1 }} />
         <span className="gxLiveDot" />
         <span>v0.1</span>
+        <div className="gxTopbarAuth">
+          {user && profile ? (
+            <>
+              <button type="button" className="gxBtn isSm" onClick={onViewLeaderboard}>
+                <i className="fa-solid fa-trophy" style={{ fontSize: 11 }} /> Board
+              </button>
+              <button type="button" className="gxBtn isSm" onClick={onViewProfile}>
+                <i className="fa-solid fa-user" style={{ fontSize: 11 }} /> {profile.username}
+              </button>
+              <button type="button" className="gxBtn isSm" onClick={signOut} title="Sign out">
+                <i className="fa-solid fa-right-from-bracket" style={{ fontSize: 11 }} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="gxBtn isSm" onClick={onViewLeaderboard}>
+                <i className="fa-solid fa-trophy" style={{ fontSize: 11 }} /> Board
+              </button>
+              <button type="button" className="gxBtn isPrimary isSm" onClick={() => setAuthOpen(true)}>
+                Sign In
+              </button>
+            </>
+          )}
+        </div>
       </div>
+
+      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
 
       <div className="landingLayout">
         {/* Side rail */}
@@ -157,7 +206,7 @@ export default function LandingPage({ onSelectTask, onOpenCreator }: Props) {
                 </div>
                 <div className="drillCardFooter">
                   <span className="drillCardPbLabel">PB</span>
-                  <span className="drillCardPbVal">—</span>
+                  <span className="drillCardPbVal">{pbMap[task.id] ?? '—'}</span>
                 </div>
                 {task.isCustom && (
                   <button
