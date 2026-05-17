@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  DEFAULT_BG_DEPTH,
   DEFAULT_DPI,
   DEFAULT_VALORANT_SENS,
   SENS_BASE_SCALE,
@@ -8,6 +7,14 @@ import {
 } from '../constants'
 import type { TaskConfig } from '../types'
 import { ThreeBackground } from '../renderer/ThreeBackground'
+import type { BackgroundType } from '../renderer/ThreeBackground'
+
+const BACKGROUNDS: { id: BackgroundType; name: string; desc: string; grad: string }[] = [
+  { id: 'tunnel', name: 'Cyber Tunnel', desc: 'Wireframe corridor',      grad: 'linear-gradient(135deg,#050a10 40%,#1a5580)' },
+  { id: 'dojo',   name: 'Dojo',         desc: 'Japanese training room',  grad: 'linear-gradient(135deg,#1a0f07 40%,#8a9860)' },
+  { id: 'bunker', name: 'Bunker',       desc: 'Concrete firing range',   grad: 'linear-gradient(135deg,#606468 40%,#87ceeb)' },
+  { id: 'mars',   name: 'Mars Arena',   desc: 'Red planet battlefield',  grad: 'linear-gradient(135deg,#3a1808 40%,#c86030)' },
+]
 
 type RoundStatus = 'idle' | 'running' | 'ended'
 type SettingsTab = 'dot' | 'background' | 'mouse' | 'crosshair'
@@ -135,7 +142,7 @@ export default function AimTrainer({ task, onBack }: Props) {
   const [dotSize, setDotSize] = useState(task.targetSize)
   const [dotDepth, setDotDepth] = useState(task.targetDepth)
   const [dotColor, setDotColor] = useState(task.targetColor)
-  const [bgDepth, setBgDepth] = useState(DEFAULT_BG_DEPTH)
+  const [backgroundType, setBackgroundType] = useState<BackgroundType>('tunnel')
   const [dpi, setDpi] = useState(DEFAULT_DPI)
   const [valorantSens, setValorantSens] = useState(DEFAULT_VALORANT_SENS)
 
@@ -143,7 +150,6 @@ export default function AimTrainer({ task, onBack }: Props) {
   const dotSizeRef = useRef(task.targetSize)
   const dotDepthRef = useRef(task.targetDepth)
   const dotColorRef = useRef(task.targetColor)
-  const bgDepthRef = useRef(DEFAULT_BG_DEPTH)
   const sensMultiplierRef = useRef(1.0)
   const crosshairRef = useRef<CrosshairConfig>(DEFAULT_CROSSHAIR)
   const crosshairHitFlashRef = useRef(0)
@@ -489,6 +495,7 @@ export default function AimTrainer({ task, onBack }: Props) {
           const remaining = t.targetLifetime - (now - d.spawnedAt) / 1000
           if (remaining < t.targetLifetime * 0.3) r += Math.sin(now * 0.02) * 2
         }
+        r = Math.max(1, r)
         const isHovered = di === onTargetIdx
         drawSphere3D(ctx, sx, sy, r, dotColorRef.current, isHovered, now)
       }
@@ -574,6 +581,13 @@ export default function AimTrainer({ task, onBack }: Props) {
     drawCrosshairAt(ctx, w / 2, h / 2, crosshairDraft)
   }, [crosshairDraft, settingsOpen, activeTab])
 
+  // Sync task prop changes into the ref so live-test updates take effect
+  useEffect(() => {
+    taskRef.current = task
+    dotsRef.current = []
+    nextSpawnAtRef.current = performance.now() + task.spawnDelay
+  }, [task])
+
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -629,7 +643,6 @@ export default function AimTrainer({ task, onBack }: Props) {
     dotSizeRef.current = dotSize
     dotDepthRef.current = dotDepth
     dotColorRef.current = dotColor
-    bgDepthRef.current = bgDepth
     sensMultiplierRef.current = (dpi * valorantSens * VALORANT_YAW) / SENS_BASE_SCALE
     crosshairRef.current = crosshairDraft
     setSettingsOpen(false)
@@ -640,13 +653,11 @@ export default function AimTrainer({ task, onBack }: Props) {
     setDotSize(t.targetSize)
     setDotDepth(t.targetDepth)
     setDotColor(t.targetColor)
-    setBgDepth(DEFAULT_BG_DEPTH)
     setDpi(DEFAULT_DPI)
     setValorantSens(DEFAULT_VALORANT_SENS)
     dotSizeRef.current = t.targetSize
     dotDepthRef.current = t.targetDepth
     dotColorRef.current = t.targetColor
-    bgDepthRef.current = DEFAULT_BG_DEPTH
     sensMultiplierRef.current = 1.0
     setCrosshairDraft(DEFAULT_CROSSHAIR)
     crosshairRef.current = DEFAULT_CROSSHAIR
@@ -853,11 +864,26 @@ export default function AimTrainer({ task, onBack }: Props) {
               </div>
             )}
             {activeTab === 'background' && (
-              <div className="aimPanel">
-                <label className="aimControl">
-                  <span>Tunnel depth</span>
-                  <input type="range" min="0.8" max="2" step="0.05" value={bgDepth} onChange={(e) => setBgDepth(Number(e.target.value))} />
-                </label>
+              <div className="aimBgPanel">
+                <div className="aimBgGrid">
+                  {BACKGROUNDS.map(bg => (
+                    <button
+                      key={bg.id}
+                      type="button"
+                      className={`aimBgCard${backgroundType === bg.id ? ' isSelected' : ''}`}
+                      onClick={() => {
+                        setBackgroundType(bg.id)
+                        threeBackgroundRef.current?.setBackground(bg.id)
+                      }}
+                    >
+                      <div className="aimBgThumb" style={{ background: bg.grad }} />
+                      <div className="aimBgMeta">
+                        <span className="aimBgName">{bg.name}</span>
+                        <span className="aimBgDesc">{bg.desc}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {activeTab === 'mouse' && (
@@ -892,7 +918,6 @@ export default function AimTrainer({ task, onBack }: Props) {
               </div>
             )}
             <div className="aimModalFooter">
-            \
               <button type="button" className="aimModalResetBtn" onClick={resetSettings}>Reset</button>
               <button type="button" className="aimModalApplyBtn" onClick={applySettings}>Apply</button>
             </div>

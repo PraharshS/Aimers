@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:aiming.pro)"
+      "WebFetch(domain:aiming.pro)",
+      "Bash(npx tsc *)",
+      "Bash(npm install *)"
     ]
   }
 }

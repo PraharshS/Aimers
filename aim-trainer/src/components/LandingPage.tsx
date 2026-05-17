@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import type { TaskConfig } from '../types'
 import { BUILT_IN_TASKS } from '../types'
 import { deleteCustomTask, loadCustomTasks } from '../taskStorage'
-import TaskCreator from './TaskCreator'
 
 type Props = {
   onSelectTask: (task: TaskConfig) => void
+  onOpenCreator: () => void
 }
 
 function DrillIcon({ taskId, size = 18 }: { taskId: string; size?: number }) {
@@ -55,9 +55,8 @@ function DrillIcon({ taskId, size = 18 }: { taskId: string; size?: number }) {
   )
 }
 
-export default function LandingPage({ onSelectTask }: Props) {
+export default function LandingPage({ onSelectTask, onOpenCreator }: Props) {
   const [customTasks, setCustomTasks] = useState<TaskConfig[]>([])
-  const [creatorOpen, setCreatorOpen] = useState(false)
 
   useEffect(() => {
     setCustomTasks(loadCustomTasks())
@@ -123,7 +122,7 @@ export default function LandingPage({ onSelectTask }: Props) {
               <button
                 type="button"
                 className="gxBtn isSm"
-                onClick={() => setCreatorOpen(true)}
+                onClick={onOpenCreator}
               >
                 + custom
               </button>
@@ -140,11 +139,13 @@ export default function LandingPage({ onSelectTask }: Props) {
           {/* Drill grid */}
           <div className="drillGrid">
             {allTasks.map((task, i) => (
-              <button
+              <div
                 key={task.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className="drillCard"
                 onClick={() => onSelectTask(task)}
+                onKeyDown={(e) => e.key === 'Enter' && onSelectTask(task)}
               >
                 <div className="drillCardTop">
                   <DrillIcon taskId={task.isCustom ? '' : task.id} size={18} />
@@ -168,14 +169,14 @@ export default function LandingPage({ onSelectTask }: Props) {
                     <i className="fa-solid fa-trash" style={{ fontSize: 9 }} />
                   </button>
                 )}
-              </button>
+              </div>
             ))}
 
             {/* Create task card */}
             <button
               type="button"
               className="drillCard drillCardCreate"
-              onClick={() => setCreatorOpen(true)}
+              onClick={onOpenCreator}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round">
                 <path d="M 12 5 V 19 M 5 12 H 19" />
@@ -186,12 +187,6 @@ export default function LandingPage({ onSelectTask }: Props) {
         </main>
       </div>
 
-      {creatorOpen && (
-        <TaskCreator
-          onSave={() => { refresh(); setCreatorOpen(false) }}
-          onClose={() => setCreatorOpen(false)}
-        />
-      )}
     </div>
   )
 }

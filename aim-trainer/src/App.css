@@ -1031,3 +1031,161 @@
 }
 
 .tcNumInput:focus { border-color: var(--line-3); }
+
+/* ── Background picker ── */
+.aimBgPanel { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+
+.aimBgGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.aimBgCard {
+  appearance: none;
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+  border-radius: 2px;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s;
+}
+
+.aimBgCard:hover { border-color: var(--line-3); }
+
+.aimBgCard.isSelected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.aimBgThumb {
+  width: 100%;
+  height: 52px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.aimBgMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 9px 8px;
+}
+
+.aimBgName {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.aimBgDesc {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+}
+
+.aimBgCard.isSelected .aimBgName { color: var(--accent); }
+
+/* ── Task Creator — wide layout with preview ── */
+.taskCreatorWide { max-width: 860px !important; }
+
+.taskCreatorLayout {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tcPreviewCol {
+  flex: 0 0 240px;
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 12px;
+  background: var(--bg);
+}
+
+.tcPreviewLabel {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+  align-self: flex-start;
+}
+
+.tcPreviewCanvas {
+  width: 240px;
+  height: 180px;
+  border-radius: 2px;
+  border: 1px solid var(--line);
+  background: #08101a;
+  display: block;
+  flex-shrink: 0;
+}
+
+.tcPreviewMeta {
+  display: flex;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  align-self: flex-start;
+}
+
+/* Override taskCreatorBody when inside layout */
+.taskCreatorLayout > .taskCreatorBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border: none;
+}
+
+/* Testing badge & test button */
+.tcTestingBadge {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 2px 6px;
+  border-radius: 2px;
+  animation: tcPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes tcPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.tcTestBtn {
+  color: var(--text-2);
+  border-color: var(--line-2);
+  letter-spacing: 0.06em;
+}
+
+.tcTestBtn.isActive {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-3);
+}
+
+/* Raise creator overlay above everything (including game) */
+.taskCreatorOverlay { z-index: 300; }
