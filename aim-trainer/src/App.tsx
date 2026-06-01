@@ -14,11 +14,11 @@ type AppView = 'landing' | 'game' | 'profile' | 'leaderboard'
 export default function App() {
   const [view, setView]               = useState<AppView>('landing')
   const [activeTask, setActiveTask]   = useState<TaskConfig | null>(null)
-  const [testDraft, setTestDraft]     = useState<TaskConfig | null>(null)
   const [creatorOpen, setCreatorOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<TaskConfig | null>(null)
   const [landingKey, setLandingKey]   = useState(0)
 
-  const runningTask = testDraft ?? activeTask
+  const runningTask = activeTask
 
   const handleBack = () => {
     setTestDraft(null)
@@ -34,15 +34,20 @@ export default function App() {
   const handleCreatorSave = (task: TaskConfig) => {
     saveCustomTask(task)
     setCreatorOpen(false)
-    setTestDraft(null)
+    setEditingTask(null)
     setActiveTask(null)
     setView('landing')
     setLandingKey(k => k + 1)
   }
 
+  const handleEditTask = (task: TaskConfig) => {
+    setEditingTask(task)
+    setCreatorOpen(true)
+  }
+
   const handleCreatorClose = () => {
     setCreatorOpen(false)
-    setTestDraft(null)
+    setEditingTask(null)
   }
 
   return (
@@ -58,6 +63,7 @@ export default function App() {
           key={landingKey}
           onSelectTask={handleSelectTask}
           onOpenCreator={() => setCreatorOpen(true)}
+          onEditTask={handleEditTask}
           onViewProfile={() => setView('profile')}
           onViewLeaderboard={() => setView('leaderboard')}
         />
@@ -65,9 +71,9 @@ export default function App() {
 
       {creatorOpen && (
         <TaskCreator
+          initialTask={editingTask}
           onSave={handleCreatorSave}
           onClose={handleCreatorClose}
-          onTest={setTestDraft}
         />
       )}
     </AuthProvider>

@@ -9,6 +9,7 @@ import AuthModal from './AuthModal'
 type Props = {
   onSelectTask: (task: TaskConfig) => void
   onOpenCreator: () => void
+  onEditTask: (task: TaskConfig) => void
   onViewProfile: () => void
   onViewLeaderboard: () => void
 }
@@ -60,7 +61,7 @@ function DrillIcon({ taskId, size = 18 }: { taskId: string; size?: number }) {
   )
 }
 
-export default function LandingPage({ onSelectTask, onOpenCreator, onViewProfile, onViewLeaderboard }: Props) {
+export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, onViewProfile, onViewLeaderboard }: Props) {
   const { user, profile, signOut } = useAuth()
   const [customTasks, setCustomTasks] = useState<TaskConfig[]>([])
   const [authOpen, setAuthOpen] = useState(false)
@@ -209,14 +210,24 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onViewProfile
                   <span className="drillCardPbVal">{pbMap[task.id] ?? '—'}</span>
                 </div>
                 {task.isCustom && (
-                  <button
-                    type="button"
-                    className="drillCardDeleteBtn"
-                    onClick={(e) => handleDelete(e, task.id)}
-                    aria-label="Delete task"
-                  >
-                    <i className="fa-solid fa-trash" style={{ fontSize: 9 }} />
-                  </button>
+                  <div className="drillCardActions">
+                    <button
+                      type="button"
+                      className="drillCardActionBtn"
+                      onClick={(e) => { e.stopPropagation(); onEditTask(task) }}
+                      aria-label="Edit task"
+                    >
+                      <i className="fa-solid fa-pen" style={{ fontSize: 9 }} />
+                    </button>
+                    <button
+                      type="button"
+                      className="drillCardActionBtn isDanger"
+                      onClick={(e) => handleDelete(e, task.id)}
+                      aria-label="Delete task"
+                    >
+                      <i className="fa-solid fa-trash" style={{ fontSize: 9 }} />
+                    </button>
+                  </div>
                 )}
               </div>
             ))}

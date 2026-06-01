@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import {
   DEFAULT_DPI,
   DEFAULT_VALORANT_SENS,
@@ -131,6 +132,8 @@ export default function AimTrainer({ task, onBack }: Props) {
   const missesRef = useRef(0)
   const currentStreakRef = useRef(0)
   const maxStreakRef = useRef(0)
+  const trackingOnTargetMsRef = useRef(0)
+  const trackingOffTargetMsRef = useRef(0)
 
   // Draft UI state (settings modal)
   const [score, setScore] = useState(0)
@@ -138,6 +141,9 @@ export default function AimTrainer({ task, onBack }: Props) {
   const [misses, setMisses] = useState(0)
   const [maxStreak, setMaxStreak] = useState(0)
   const [roundEnded, setRoundEnded] = useState(false)
+  const [scoreSaveStatus, setScoreSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [personalScores, setPersonalScores] = useState<{ label: string; score: number }[]>([])
+  const [personalHighScore, setPersonalHighScore] = useState(0)
   const [timeLeftSec, setTimeLeftSec] = useState(task.roundDuration)
   const [activeTab, setActiveTab] = useState<SettingsTab>('dot')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -175,20 +181,64 @@ export default function AimTrainer({ task, onBack }: Props) {
     sensMultiplierRef.current = isFinite(mult) ? mult : 1.0
   }, [profile])
 
+  // Fetch personal scores for current task when round ends
+  useEffect(() => {
+    if (!roundEnded || !user) return
+    supabase
+      .from('scores')
+      .select('score, played_at')
+      .eq('user_id', user.id)
+      .eq('task_id', taskRef.current.id)
+      .order('played_at', { ascending: true })
+      .limit(10)
+      .then(({ data }) => {
+        const scores = (data ?? []).map((row, i) => ({
+          label: `#${i + 1}`,
+          score: row.score,
+        }))
+        setPersonalScores(scores)
+        const high = Math.max(0, ...(data?.map(r => r.score) ?? [0]))
+        setPersonalHighScore(high)
+      })
+  }, [roundEnded, user])
+
   // Save score to Supabase when round ends (only if signed in)
   useEffect(() => {
     if (!roundEnded || !user) return
-    const totalShots = hitsRef.current + missesRef.current
-    const accuracy = totalShots > 0 ? hitsRef.current / totalShots : 0
+
+    const t = taskRef.current
+    let hits = hitsRef.current
+    let misses = missesRef.current
+    let accuracy = 0
+
+    // For tracking tasks, use on-target/off-target time instead
+    if (t.movementType !== 'stationary') {
+      hits = Math.round(trackingOnTargetMsRef.current / 100) // convert ms to tenths of seconds
+      misses = Math.round(trackingOffTargetMsRef.current / 100)
+      const total = hits + misses
+      accuracy = total > 0 ? hits / total : 0
+    } else {
+      const totalShots = hits + misses
+      accuracy = totalShots > 0 ? hits / totalShots : 0
+    }
+
+    setScoreSaveStatus('saving')
     supabase.from('scores').insert({
       user_id: user.id,
-      task_id: taskRef.current.id,
-      task_name: taskRef.current.name,
+      task_id: t.id,
+      task_name: t.name,
       score: scoreRef.current,
-      hits: hitsRef.current,
-      misses: missesRef.current,
+      hits,
+      misses,
       accuracy,
-      duration: taskRef.current.roundDuration,
+      duration: t.roundDuration,
+    }).then(({ error }) => {
+      if (error) {
+        console.error('[Scores] Failed to save score:', error.message)
+        setScoreSaveStatus('error')
+      } else {
+        setScoreSaveStatus('saved')
+      }
     })
   }, [roundEnded, user])
 
@@ -244,12 +294,15 @@ export default function AimTrainer({ task, onBack }: Props) {
     missesRef.current = 0
     currentStreakRef.current = 0
     maxStreakRef.current = 0
+    trackingOnTargetMsRef.current = 0
+    trackingOffTargetMsRef.current = 0
     timeLeftSecRef.current = taskRef.current.roundDuration
     setScore(0)
     setHits(0)
     setMisses(0)
     setMaxStreak(0)
     setRoundEnded(false)
+    setScoreSaveStatus('idle')
     setTimeLeftSec(taskRef.current.roundDuration)
     endAtRef.current = 0
     nextSpawnAtRef.current = 0
@@ -269,6 +322,8 @@ export default function AimTrainer({ task, onBack }: Props) {
     missesRef.current = 0
     currentStreakRef.current = 0
     maxStreakRef.current = 0
+    trackingOnTargetMsRef.current = 0
+    trackingOffTargetMsRef.current = 0
     timeLeftSecRef.current = t.roundDuration
     setScore(0)
     setHits(0)
@@ -486,13 +541,18 @@ export default function AimTrainer({ task, onBack }: Props) {
         }
 
         // Time-based scoring for moving targets (tracking tasks)
-        if (onTargetIdx >= 0 && t.movementType !== 'stationary') {
-          crosshairHitFlashRef.current = now
-          trackingScoreAccRef.current += (t.hitScore / 1000) * dt
-          const whole = Math.floor(trackingScoreAccRef.current)
-          if (whole > 0) {
-            trackingScoreAccRef.current -= whole
-            setScore(s => { const n = s + whole; scoreRef.current = n; return n })
+        if (t.movementType !== 'stationary') {
+          if (onTargetIdx >= 0) {
+            crosshairHitFlashRef.current = now
+            trackingOnTargetMsRef.current += dt
+            trackingScoreAccRef.current += (t.hitScore / 1000) * dt
+            const whole = Math.floor(trackingScoreAccRef.current)
+            if (whole > 0) {
+              trackingScoreAccRef.current -= whole
+              setScore(s => { const n = s + whole; scoreRef.current = n; return n })
+            }
+          } else {
+            trackingOffTargetMsRef.current += dt
           }
         }
 
@@ -502,7 +562,7 @@ export default function AimTrainer({ task, onBack }: Props) {
           timeLeftSecRef.current = remainingSec
           setTimeLeftSec(remainingSec)
         }
-        if (remainingMs <= 0) {
+        if (remainingMs <= 0 && statusRef.current !== 'ended') {
           statusRef.current = 'ended'
           timeLeftSecRef.current = 0
           setTimeLeftSec(0)
@@ -744,7 +804,33 @@ export default function AimTrainer({ task, onBack }: Props) {
           <div className="aimResultsCard">
             <div className="aimResultsDrillLabel">{task.name} · {task.roundDuration}s · run complete</div>
             <div className="aimResultsScore">{score.toLocaleString()}</div>
-            <div className="aimResultsScoreLabel">score</div>
+            <div className="aimResultsScoreLabel">
+              score
+              {personalHighScore > 0 && score > personalHighScore && <span className="aimNewRecord">🎉 NEW RECORD</span>}
+            </div>
+
+            {user && personalScores.length > 0 && (
+              <div className="aimResultsChart">
+                <div className="aimChartLabel">Your Performance</div>
+                <ResponsiveContainer width="100%" height={120}>
+                  <LineChart data={personalScores} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="2 2" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
+                    <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} width={30} />
+                    <Tooltip
+                      contentStyle={{ background: 'rgba(3,8,18,0.95)', border: '1px solid rgba(88,214,255,0.2)', borderRadius: '4px', fontSize: 11 }}
+                      formatter={(value) => value}
+                    />
+                    <Line type="monotone" dataKey="score" stroke="#58d6ff" dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+                <div className="aimChartStats">
+                  <div><span>High Score:</span> <strong>{personalHighScore.toLocaleString()}</strong></div>
+                  <div><span>Current:</span> <strong>{score.toLocaleString()}</strong></div>
+                </div>
+              </div>
+            )}
+
             <div className="aimResultsKpis">
               <div className="aimResultsKpi">
                 <div className="aimHudLabel">accuracy</div>
@@ -761,6 +847,13 @@ export default function AimTrainer({ task, onBack }: Props) {
                 <div className="aimResultsKpiValue">×{maxStreak}</div>
               </div>
             </div>
+            {user && (
+              <div className="aimResultsSaveStatus">
+                {scoreSaveStatus === 'saving' && <span className="aimSaveLabel">Saving…</span>}
+                {scoreSaveStatus === 'saved'  && <span className="aimSaveLabel isSaved"><i className="fa-solid fa-check" /> Saved</span>}
+                {scoreSaveStatus === 'error'  && <span className="aimSaveLabel isError"><i className="fa-solid fa-triangle-exclamation" /> Failed to save</span>}
+              </div>
+            )}
             <div className="aimResultsActions">
               <button
                 type="button"

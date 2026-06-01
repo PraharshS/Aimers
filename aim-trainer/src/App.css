@@ -323,27 +323,51 @@
   text-transform: uppercase;
 }
 
-.drillCardDeleteBtn {
+.drillCardActions {
   position: absolute;
   top: 8px;
   right: 8px;
-  appearance: none;
-  background: rgba(255,93,93,0.08);
-  border: 1px solid rgba(255,93,93,0.18);
-  color: var(--danger);
-  width: 22px;
-  height: 22px;
-  border-radius: 2px;
-  cursor: pointer;
-  font-size: 10px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  gap: 4px;
   opacity: 0;
   transition: opacity 0.15s;
 }
 
-.drillCard:hover .drillCardDeleteBtn { opacity: 1; }
+.drillCard:hover .drillCardActions { opacity: 1; }
+
+.drillCardActionBtn {
+  appearance: none;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-2);
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.drillCardActionBtn:hover {
+  background: rgba(88,214,255,0.12);
+  border-color: rgba(88,214,255,0.3);
+  color: #58d6ff;
+}
+
+.drillCardActionBtn.isDanger {
+  background: rgba(255,93,93,0.08);
+  border-color: rgba(255,93,93,0.18);
+  color: var(--danger);
+}
+
+.drillCardActionBtn.isDanger:hover {
+  background: rgba(255,93,93,0.2);
+  border-color: rgba(255,93,93,0.4);
+  color: #ff5d5d;
+}
 
 /* ═══ AIM TRAINER ═══ */
 .aimApp {
@@ -503,6 +527,50 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aimNewRecord {
+  font-size: 10px;
+  font-weight: 600;
+  color: #4ade80;
+  background: rgba(74,222,128,0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.aimResultsChart {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(88,214,255,0.1);
+}
+
+.aimChartLabel {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+
+.aimChartStats {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.aimChartStats div {
+  display: flex;
+  gap: 4px;
+  color: var(--text-3);
+}
+
+.aimChartStats strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .aimResultsKpis {
@@ -532,6 +600,19 @@
   letter-spacing: -0.02em;
   color: var(--text);
 }
+
+.aimResultsSaveStatus {
+  min-height: 20px;
+  display: flex;
+  justify-content: center;
+}
+.aimSaveLabel {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+.aimSaveLabel.isSaved { color: #4ade80; }
+.aimSaveLabel.isError { color: #f87171; }
 
 .aimResultsActions {
   display: flex;
@@ -1157,6 +1238,56 @@
 
 .lbFilterBtn:hover { color: var(--text); border-color: var(--line-3); }
 .lbFilterBtn.isActive { background: var(--accent-2); border-color: var(--accent); color: var(--accent); }
+
+.lbChartSection {
+  padding: 24px;
+  border-bottom: 1px solid var(--line-2);
+}
+
+.lbChartHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.lbChartTitle {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin: 0;
+}
+
+.lbTimePeriods {
+  display: flex;
+  gap: 8px;
+}
+
+.lbPeriodBtn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--line-2);
+  color: var(--text-3);
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.lbPeriodBtn:hover {
+  border-color: var(--line-3);
+  color: var(--text-2);
+}
+
+.lbPeriodBtn.isActive {
+  background: var(--accent-2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
 
 .lbTableWrap {
   padding: 20px 24px;

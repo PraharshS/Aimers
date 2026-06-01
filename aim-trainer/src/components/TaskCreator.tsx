@@ -30,7 +30,6 @@ type Props = {
   initialTask?: TaskConfig | null
   onSave: (task: TaskConfig) => void
   onClose: () => void
-  onTest?: (draft: TaskConfig) => void
 }
 
 function hexToRgb(hex: string) {
@@ -73,7 +72,6 @@ export default function TaskCreator({ initialTask, onSave, onClose, onTest }: Pr
   const [roundDuration, setRoundDuration] = useState(base.roundDuration)
   const [hitScore, setHitScore] = useState(base.hitScore)
   const [missPenalty, setMissPenalty] = useState(base.missPenalty)
-  const [testing, setTesting] = useState(false)
 
   const previewRef = useRef<HTMLCanvasElement | null>(null)
 
@@ -165,24 +163,6 @@ export default function TaskCreator({ initialTask, onSave, onClose, onTest }: Pr
     return () => cancelAnimationFrame(rafId)
   }, [maxTargets, targetSize, movementType, movementSpeed, spawnDistance, color])
 
-  // Push live draft to parent when testing
-  useEffect(() => {
-    if (!testing || !onTest) return
-    onTest(buildDraft())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [testing, name, color, targetSize, maxTargets, targetLifetime,
-      spawnDistance, spawnDelay, movementType, movementSpeed,
-      roundDuration, hitScore, missPenalty])
-
-  const handleTest = () => {
-    if (!onTest) return
-    if (testing) {
-      // Stop test — signal parent by sending null-ish (close hides it)
-      setTesting(false)
-    } else {
-      setTesting(true)
-    }
-  }
 
   const handleSave = () => {
     if (!name.trim()) return
@@ -215,7 +195,6 @@ export default function TaskCreator({ initialTask, onSave, onClose, onTest }: Pr
       <div className="taskCreator taskCreatorWide" onClick={(e) => e.stopPropagation()}>
         <div className="taskCreatorHeader">
           <span>{initialTask ? 'Edit Task' : 'Create Task'}</span>
-          {testing && <span className="tcTestingBadge">LIVE TEST</span>}
           <button type="button" className="aimModalClose" onClick={handleClose} aria-label="Close">
             <i className="fa-solid fa-xmark" />
           </button>
@@ -459,15 +438,6 @@ export default function TaskCreator({ initialTask, onSave, onClose, onTest }: Pr
           <button type="button" className="aimModalResetBtn" onClick={handleClose}>
             Cancel
           </button>
-          {onTest && (
-            <button
-              type="button"
-              className={`aimModalResetBtn tcTestBtn${testing ? ' isActive' : ''}`}
-              onClick={handleTest}
-            >
-              {testing ? '■ Stop Test' : '▸ Test'}
-            </button>
-          )}
           <button
             type="button"
             className="aimModalApplyBtn"

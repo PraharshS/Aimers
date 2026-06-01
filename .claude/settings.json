@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\Praharsh Singh\\\\Documents\\\\Aimers\\\\aim-trainer\\\\src\\\\renderer\")",
+      "Bash(*)",
+      "PowerShell(*)"
     ]
   }
 }
