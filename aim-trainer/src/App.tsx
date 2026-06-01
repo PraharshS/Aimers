@@ -21,7 +21,6 @@ export default function App() {
   const runningTask = activeTask
 
   const handleBack = () => {
-    setTestDraft(null)
     setActiveTask(null)
     setView('landing')
   }

@@ -592,7 +592,8 @@ export default function AimTrainer({ task, onBack }: Props) {
         }
         r = Math.max(1, r)
         const isHovered = di === onTargetIdx
-        drawSphere3D(ctx, sx, sy, r, dotColorRef.current, isHovered, now)
+        const sphereColor = isHovered ? '#ffff00' : dotColorRef.current
+        drawSphere3D(ctx, sx, sy, r, sphereColor)
       }
 
       // Crosshair (hidden during countdown)
@@ -1122,20 +1123,8 @@ function drawSphere3D(
   ctx: CanvasRenderingContext2D,
   sx: number, sy: number, r: number,
   hex: string,
-  active: boolean,
-  now: number,
 ) {
   const { r: rv, g: gv, b: bv } = hexToRgb(hex)
-
-  // Active glow ring behind sphere
-  if (active) {
-    const pulse = 0.5 + 0.5 * Math.sin(now * 0.006)
-    const glow = ctx.createRadialGradient(sx, sy, r * 0.85, sx, sy, r * 1.45)
-    glow.addColorStop(0, `rgba(255,220,0,${(0.25 + pulse * 0.3).toFixed(2)})`)
-    glow.addColorStop(1, 'rgba(255,220,0,0)')
-    ctx.beginPath(); ctx.arc(sx, sy, r * 1.45, 0, Math.PI * 2)
-    ctx.fillStyle = glow; ctx.fill()
-  }
 
   // Sphere body — radial gradient simulating Phong lighting
   // Light source: upper-left-front → highlight offset

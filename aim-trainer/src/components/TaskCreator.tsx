@@ -56,7 +56,7 @@ function drawSphere(
   ctx.fillStyle = grd; ctx.fill()
 }
 
-export default function TaskCreator({ initialTask, onSave, onClose, onTest }: Props) {
+export default function TaskCreator({ initialTask, onSave, onClose }: Props) {
   const base = initialTask ?? { ...DEFAULT_TASK_VALUES, id: '', name: '' }
 
   const [name, setName] = useState(base.name)
@@ -175,7 +175,6 @@ export default function TaskCreator({ initialTask, onSave, onClose, onTest }: Pr
   }
 
   const handleClose = () => {
-    setTesting(false)
     onClose()
   }
 
@@ -250,7 +249,7 @@ export default function TaskCreator({ initialTask, onSave, onClose, onTest }: Pr
                       key={ic}
                       type="button"
                       className={`tcIconOpt ${icon === ic ? 'isActive' : ''}`}
-                      style={icon === ic ? { borderColor: color, color } : {}}
+                      style={icon === ic ? { borderColor: '#58d6ff', color: '#58d6ff' } : {}}
                       onClick={() => setIcon(ic)}
                       aria-label={ic}
                     >
@@ -272,7 +271,7 @@ export default function TaskCreator({ initialTask, onSave, onClose, onTest }: Pr
                       key={p.label}
                       type="button"
                       className={`tcToggle ${targetSize === p.value ? 'isActive' : ''}`}
-                      style={targetSize === p.value ? { borderColor: color, color } : {}}
+                      style={targetSize === p.value ? { borderColor: '#58d6ff', color: '#58d6ff' } : {}}
                       onClick={() => setTargetSize(p.value)}
                     >
                       {p.label}
@@ -304,7 +303,7 @@ export default function TaskCreator({ initialTask, onSave, onClose, onTest }: Pr
                       key={p.label}
                       type="button"
                       className={`tcToggle ${targetLifetime === p.value ? 'isActive' : ''}`}
-                      style={targetLifetime === p.value ? { borderColor: color, color } : {}}
+                      style={targetLifetime === p.value ? { borderColor: '#58d6ff', color: '#58d6ff' } : {}}
                       onClick={() => setTargetLifetime(p.value)}
                     >
                       {p.label}
@@ -360,7 +359,7 @@ export default function TaskCreator({ initialTask, onSave, onClose, onTest }: Pr
                       key={t}
                       type="button"
                       className={`tcToggle ${movementType === t ? 'isActive' : ''}`}
-                      style={movementType === t ? { borderColor: color, color } : {}}
+                      style={movementType === t ? { borderColor: '#58d6ff', color: '#58d6ff' } : {}}
                       onClick={() => setMovementType(t)}
                     >
                       {t === '2d' ? '2D' : t.charAt(0).toUpperCase() + t.slice(1)}
@@ -398,7 +397,7 @@ export default function TaskCreator({ initialTask, onSave, onClose, onTest }: Pr
                       key={d}
                       type="button"
                       className={`tcToggle ${roundDuration === d ? 'isActive' : ''}`}
-                      style={roundDuration === d ? { borderColor: color, color } : {}}
+                      style={roundDuration === d ? { borderColor: '#58d6ff', color: '#58d6ff' } : {}}
                       onClick={() => setRoundDuration(d)}
                     >
                       {d}s
