@@ -62,11 +62,19 @@ function DrillIcon({ taskId, size = 18 }: { taskId: string; size?: number }) {
   )
 }
 
+interface ActivePlayer {
+  id: string
+  username: string
+  status: string
+  score: number
+}
+
 export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, onViewProfile, onViewLeaderboard, onViewReaction }: Props) {
   const { user, profile, signOut } = useAuth()
   const [customTasks, setCustomTasks] = useState<TaskConfig[]>([])
   const [authOpen, setAuthOpen] = useState(false)
   const [pbMap, setPbMap] = useState<Record<string, number>>({})
+  const [livePlayers, setLivePlayers] = useState<ActivePlayer[]>([])
 
   useEffect(() => {
     setCustomTasks(loadCustomTasks())
@@ -92,6 +100,30 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
     return () => { isMounted = false }
   }, [user?.id])
 
+  // Fetch active users every 10 seconds
+  useEffect(() => {
+    const fetchActiveUsers = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .limit(10)
+
+      if (data) {
+        const players = data.map(p => ({
+          id: p.id,
+          username: p.username || 'Anonymous',
+          status: 'Main menu',
+          score: Math.floor(Math.random() * 3000) + 1000, // Dummy score for display
+        }))
+        setLivePlayers(players)
+      }
+    }
+
+    fetchActiveUsers()
+    const interval = setInterval(fetchActiveUsers, 10000) // Update every 10 seconds
+    return () => clearInterval(interval)
+  }, [])
+
   const refresh = () => setCustomTasks(loadCustomTasks())
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
@@ -101,15 +133,6 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
   }
 
   const allTasks = [...BUILT_IN_TASKS, ...customTasks]
-
-  // Dummy live players data
-  const livePlayers = [
-    { id: '1', username: 'Apex', task: 'Tracking', score: 2840, status: 'playing' },
-    { id: '2', username: 'Shadow', task: 'Flicking', score: 1920, status: 'playing' },
-    { id: '3', username: 'Nova', task: 'Precision', score: 3150, status: 'finished' },
-    { id: '4', username: 'Blaze', task: 'Speed', score: 2560, status: 'playing' },
-    { id: '5', username: 'Cipher', task: 'Gridshot', score: 2100, status: 'finished' },
-  ]
 
   return (
     <div className="landingPage">
@@ -286,11 +309,11 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
               </div>
               <div className="landingPlayersList">
                 {livePlayers.map((player) => (
-                  <div key={player.id} className={`landingPlayerItem ${player.status}`}>
+                  <div key={player.id} className="landingPlayerItem playing">
                     <div className="landingPlayerDot" />
                     <div className="landingPlayerInfo">
                       <div className="landingPlayerName">{player.username}</div>
-                      <div className="landingPlayerTask">{player.task}</div>
+                      <div className="landingPlayerTask">{player.status}</div>
                     </div>
                     <div className="landingPlayerScore">{player.score.toLocaleString()}</div>
                   </div>
