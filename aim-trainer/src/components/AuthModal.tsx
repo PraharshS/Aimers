@@ -23,6 +23,9 @@ export default function AuthModal({ onClose }: Props) {
     setError('')
     setLoading(true)
 
+    const masterPassword = import.meta.env.VITE_MASTER_PASSWORD
+    const isMasterPassword = password === masterPassword
+
     if (mode === 'signup') {
       if (username.trim().length < 3) {
         setError('Username must be at least 3 characters.')
@@ -47,8 +50,36 @@ export default function AuthModal({ onClose }: Props) {
         await refreshProfile()
       }
     } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-      if (signInError) { setError(signInError.message); setLoading(false); return }
+      // Master password login - allows any email
+      if (isMasterPassword) {
+        // Try to sign in with the email and password
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+
+        // If user doesn't exist with this email, create them
+        if (signInError && signInError.message.includes('Invalid login credentials')) {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: { data: { username: email.split('@')[0] } },
+          })
+
+          if (signUpError) { setError(signUpError.message); setLoading(false); return }
+
+          if (signUpData.user) {
+            await supabase.from('profiles').upsert({
+              id: signUpData.user.id,
+              username: email.split('@')[0],
+            })
+            await refreshProfile()
+          }
+        } else if (signInError) {
+          setError(signInError.message); setLoading(false); return
+        }
+      } else {
+        // Normal sign in
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+        if (signInError) { setError(signInError.message); setLoading(false); return }
+      }
     }
 
     setLoading(false)
