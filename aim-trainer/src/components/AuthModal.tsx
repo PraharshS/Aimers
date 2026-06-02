@@ -69,14 +69,28 @@ export default function AuthModal({ onClose }: Props) {
           <button
             type="button"
             className={`authTab ${mode === 'signin' ? 'isActive' : ''}`}
-            onClick={() => { setMode('signin'); setError('') }}
+            onClick={() => {
+              setMode('signin')
+              setError('')
+              setEmail('')
+              setPassword('')
+              setUsername('')
+              setShowPassword(false)
+            }}
           >
             Sign In
           </button>
           <button
             type="button"
             className={`authTab ${mode === 'signup' ? 'isActive' : ''}`}
-            onClick={() => { setMode('signup'); setError('') }}
+            onClick={() => {
+              setMode('signup')
+              setError('')
+              setEmail('')
+              setPassword('')
+              setUsername('')
+              setShowPassword(false)
+            }}
           >
             Sign Up
           </button>
