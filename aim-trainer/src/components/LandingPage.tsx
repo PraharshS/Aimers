@@ -73,18 +73,23 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
 
   useEffect(() => {
     if (!user) { setPbMap({}); return }
+    let isMounted = true
     supabase
       .from('scores')
       .select('task_id, score')
       .eq('user_id', user.id)
+      .order('score', { ascending: false })
+      .limit(100)
       .then(({ data }) => {
+        if (!isMounted) return
         const best: Record<string, number> = {}
         for (const row of data ?? []) {
-          if (!best[row.task_id] || row.score > best[row.task_id]) best[row.task_id] = row.score
+          if (!best[row.task_id]) best[row.task_id] = row.score
         }
         setPbMap(best)
       })
-  }, [user])
+    return () => { isMounted = false }
+  }, [user?.id])
 
   const refresh = () => setCustomTasks(loadCustomTasks())
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { TaskConfig } from './types'
 import { AuthProvider } from './context/AuthContext'
 import AimTrainer from './components/AimTrainer'
@@ -7,6 +7,7 @@ import ProfilePage from './components/ProfilePage'
 import Leaderboard from './components/Leaderboard'
 import TaskCreator from './components/TaskCreator'
 import { saveCustomTask } from './taskStorage'
+import { pingSupabase } from './lib/supabase'
 import './App.css'
 
 type AppView = 'landing' | 'game' | 'profile' | 'leaderboard'
@@ -17,6 +18,10 @@ export default function App() {
   const [creatorOpen, setCreatorOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<TaskConfig | null>(null)
   const [landingKey, setLandingKey]   = useState(0)
+
+  useEffect(() => {
+    pingSupabase()
+  }, [])
 
   const runningTask = activeTask
 

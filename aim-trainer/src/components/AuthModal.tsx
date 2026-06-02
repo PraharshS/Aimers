@@ -16,6 +16,7 @@ export default function AuthModal({ onClose }: Props) {
   const [username, setUsername] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -111,16 +112,26 @@ export default function AuthModal({ onClose }: Props) {
           </div>
           <div className="authField">
             <label className="tcLabel">Password</label>
-            <input
-              className="tcInput"
-              type="password"
-              placeholder={mode === 'signup' ? 'At least 6 characters' : ''}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-            />
+            <div className="authPasswordWrap">
+              <input
+                className="tcInput"
+                type={showPassword ? 'text' : 'password'}
+                placeholder={mode === 'signup' ? 'At least 6 characters' : ''}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              />
+              <button
+                type="button"
+                className="authPasswordToggle"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                <i className={`fa-solid fa-eye${showPassword ? '' : '-slash'}`} />
+              </button>
+            </div>
           </div>
 
           {error && <p className="authError">{error}</p>}

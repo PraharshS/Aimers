@@ -10,16 +10,31 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.info(`[Supabase] 🔗 Connecting to ${supabaseUrl}`)
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// Connectivity ping — queries the profiles table with a tiny limit
-supabase.from('profiles').select('id').limit(1).then(({ error }) => {
-  if (error) {
-    console.error('[Supabase] ❌ Connection failed:', error.message)
-  } else {
-    console.info('[Supabase] ✅ Connected successfully')
-  }
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+    },
+  },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
 })
+
+// Connectivity ping — run once on app startup
+let pingRun = false
+export function pingSupabase() {
+  if (pingRun) return
+  pingRun = true
+  supabase.from('profiles').select('id').limit(1).then(({ error }) => {
+    if (error) {
+      console.error('[Supabase] ❌ Connection failed:', error.message)
+    } else {
+      console.info('[Supabase] ✅ Connected successfully')
+    }
+  })
+}
 
 export type Profile = {
   id: string

@@ -11,6 +11,7 @@ import { ThreeBackground } from '../renderer/ThreeBackground'
 import type { BackgroundType } from '../renderer/ThreeBackground'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import popSoundUrl from '../assets/sounds/pop.mp3'
 
 const BACKGROUNDS: { id: BackgroundType; name: string; desc: string; grad: string }[] = [
   { id: 'tunnel', name: 'Cyber Tunnel', desc: 'Wireframe corridor',      grad: 'linear-gradient(135deg,#050a10 40%,#1a5580)' },
@@ -103,6 +104,28 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
 }
 
+let popSoundElement: HTMLAudioElement | null = null
+
+function getPopSound(): HTMLAudioElement {
+  if (!popSoundElement) {
+    popSoundElement = new Audio(popSoundUrl)
+    popSoundElement.preload = 'auto'
+  }
+  return popSoundElement
+}
+
+function playPopSound() {
+  try {
+    const audio = getPopSound()
+    audio.currentTime = 0
+    audio.play().catch(() => {
+      console.debug('[Sound] Pop sound play failed')
+    })
+  } catch (e) {
+    console.debug('[Sound] Audio error:', e)
+  }
+}
+
 type Props = {
   task: TaskConfig
   onBack: () => void
@@ -134,6 +157,7 @@ export default function AimTrainer({ task, onBack }: Props) {
   const maxStreakRef = useRef(0)
   const trackingOnTargetMsRef = useRef(0)
   const trackingOffTargetMsRef = useRef(0)
+  const wasOnTargetRef = useRef(false)
 
   // Draft UI state (settings modal)
   const [score, setScore] = useState(0)
@@ -147,6 +171,7 @@ export default function AimTrainer({ task, onBack }: Props) {
   const [timeLeftSec, setTimeLeftSec] = useState(task.roundDuration)
   const [activeTab, setActiveTab] = useState<SettingsTab>('dot')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [pauseOpen, setPauseOpen] = useState(false)
   const [dotSize, setDotSize] = useState(task.targetSize)
   const [dotDepth, setDotDepth] = useState(task.targetDepth)
   const [dotColor, setDotColor] = useState(task.targetColor)
@@ -296,6 +321,7 @@ export default function AimTrainer({ task, onBack }: Props) {
     maxStreakRef.current = 0
     trackingOnTargetMsRef.current = 0
     trackingOffTargetMsRef.current = 0
+    wasOnTargetRef.current = false
     timeLeftSecRef.current = taskRef.current.roundDuration
     setScore(0)
     setHits(0)
@@ -324,6 +350,7 @@ export default function AimTrainer({ task, onBack }: Props) {
     maxStreakRef.current = 0
     trackingOnTargetMsRef.current = 0
     trackingOffTargetMsRef.current = 0
+    wasOnTargetRef.current = false
     timeLeftSecRef.current = t.roundDuration
     setScore(0)
     setHits(0)
@@ -388,6 +415,7 @@ export default function AimTrainer({ task, onBack }: Props) {
 
     if (bestIdx >= 0) {
       dots.splice(bestIdx, 1)
+      playPopSound()
       crosshairHitFlashRef.current = performance.now()
       hitsRef.current++
       currentStreakRef.current++
@@ -398,7 +426,6 @@ export default function AimTrainer({ task, onBack }: Props) {
       setHits(hitsRef.current)
       setScore((s) => { const n = s + t.hitScore; scoreRef.current = n; return n })
     } else {
-      if (dots.length > 0) dots.splice(0, dots.length)
       missesRef.current++
       currentStreakRef.current = 0
       setMisses(missesRef.current)
@@ -543,6 +570,10 @@ export default function AimTrainer({ task, onBack }: Props) {
         // Time-based scoring for moving targets (tracking tasks)
         if (t.movementType !== 'stationary') {
           if (onTargetIdx >= 0) {
+            if (!wasOnTargetRef.current) {
+              playPopSound()
+              wasOnTargetRef.current = true
+            }
             crosshairHitFlashRef.current = now
             trackingOnTargetMsRef.current += dt
             trackingScoreAccRef.current += (t.hitScore / 1000) * dt
@@ -552,6 +583,7 @@ export default function AimTrainer({ task, onBack }: Props) {
               setScore(s => { const n = s + whole; scoreRef.current = n; return n })
             }
           } else {
+            wasOnTargetRef.current = false
             trackingOffTargetMsRef.current += dt
           }
         }
@@ -647,6 +679,13 @@ export default function AimTrainer({ task, onBack }: Props) {
     window.addEventListener('mousemove', onMouseMove)
 
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (statusRef.current === 'running') {
+          setPauseOpen(true)
+        } else if (pauseOpen) {
+          setPauseOpen(false)
+        }
+      }
       if (e.key === 'r' || e.key === 'R') { resetRound(); startCountdown() }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -677,6 +716,13 @@ export default function AimTrainer({ task, onBack }: Props) {
     drawCrosshairAt(ctx, w / 2, h / 2, crosshairDraft)
   }, [crosshairDraft, settingsOpen, activeTab])
 
+  // Release pointer lock when round ends so cursor is visible
+  useEffect(() => {
+    if (roundEnded && document.pointerLockElement) {
+      document.exitPointerLock?.()
+    }
+  }, [roundEnded])
+
   // Sync task prop changes into the ref so live-test updates take effect
   useEffect(() => {
     taskRef.current = task
@@ -686,7 +732,11 @@ export default function AimTrainer({ task, onBack }: Props) {
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return
-    e.currentTarget.setPointerCapture(e.pointerId)
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // Pointer capture may fail on some devices/browsers, continue anyway
+    }
     const rect = canvasRef.current?.getBoundingClientRect()
     const cx = rect ? clamp(e.clientX, rect.left, rect.right) : 0
     const cy = rect ? clamp(e.clientY, rect.top, rect.bottom) : 0
@@ -789,14 +839,6 @@ export default function AimTrainer({ task, onBack }: Props) {
             <div className="aimHudValue aimHudValueAccent" style={{ fontSize: 18 }}>×{maxStreak}</div>
           </div>
         </div>
-        <div className="aimHudActions">
-          <button type="button" className="aimIconBtn" onClick={onBack} aria-label="Back to menu">
-            <i className="fa-solid fa-arrow-left" />
-          </button>
-          <button type="button" className="aimIconBtn" onClick={() => setSettingsOpen(true)} aria-label="Open settings">
-            <i className="fa-solid fa-gear" />
-          </button>
-        </div>
       </div>
 
       {/* Results overlay */}
@@ -876,6 +918,42 @@ export default function AimTrainer({ task, onBack }: Props) {
                 onClick={() => { resetRound(); startCountdown() }}
               >
                 play again ▸
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pauseOpen && (
+        <div className="aimModalOverlay" onClick={() => setPauseOpen(false)}>
+          <div className="aimModal" onClick={(e) => e.stopPropagation()}>
+            <div className="aimModalHeader">
+              <span>Paused</span>
+              <button type="button" className="aimModalClose" onClick={() => setPauseOpen(false)} aria-label="Close">
+                <i className="fa-solid fa-xmark" />
+              </button>
+            </div>
+            <div className="aimPauseActions">
+              <button
+                type="button"
+                className="gxBtn isSm"
+                onClick={() => { setPauseOpen(false); onBack() }}
+              >
+                Leave Task
+              </button>
+              <button
+                type="button"
+                className="gxBtn isSm"
+                onClick={() => { setPauseOpen(false); resetRound(); startCountdown() }}
+              >
+                Retry
+              </button>
+              <button
+                type="button"
+                className="gxBtn isSm isPrimary"
+                onClick={() => { setPauseOpen(false); setSettingsOpen(true) }}
+              >
+                Settings
               </button>
             </div>
           </div>

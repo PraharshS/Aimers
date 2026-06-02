@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MovementType, TaskConfig } from '../types'
 import { DEFAULT_TASK_VALUES } from '../types'
+import { MAX_TARGETS } from '../constants'
 
 const ICONS = [
   'crosshairs', 'bolt', 'border-all', 'circle-dot', 'gauge-high',
@@ -282,12 +283,12 @@ export default function TaskCreator({ initialTask, onSave, onClose }: Props) {
               <div className="tcRow tcRowCol">
                 <label className="tcLabel">Max simultaneous targets</label>
                 <div className="tcToggleGroup">
-                  {[1, 2, 3, 4, 5].map((n) => (
+                  {MAX_TARGETS.map((n) => (
                     <button
                       key={n}
                       type="button"
                       className={`tcToggle ${maxTargets === n ? 'isActive' : ''}`}
-                      style={maxTargets === n ? { borderColor: color, color } : {}}
+                      style={maxTargets === n ? { borderColor: '#58d6ff', color } : {}}
                       onClick={() => setMaxTargets(n)}
                     >
                       {n}
