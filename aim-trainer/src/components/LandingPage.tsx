@@ -156,13 +156,13 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
 
       {/* Hero Section */}
-      <div className="landingHero">
+      {/* <div className="landingHero">
         <div className="landingHeroContent">
           <h1 className="landingHeroTitle">TEST YOUR AIM</h1>
           <p className="landingHeroSubtitle">AIMERS</p>
           <p className="landingHeroDesc">Master your aim through precision training drills and competitive challenges</p>
         </div>
-      </div>
+      </div> */}
 
       <div className="landingLayout">
         {/* Side rail */}

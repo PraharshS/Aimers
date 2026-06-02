@@ -257,7 +257,6 @@ export default function AimTrainer({ task, onBack }: Props) {
       accuracy = totalShots > 0 ? hits / totalShots : 0
     }
 
-    setScoreSaveStatus('saving')
     supabase.from('scores').insert({
       user_id: user.id,
       task_id: t.id,
@@ -270,9 +269,6 @@ export default function AimTrainer({ task, onBack }: Props) {
     }).then(({ error }) => {
       if (error) {
         console.error('[Scores] Failed to save score:', error.message)
-        setScoreSaveStatus('error')
-      } else {
-        setScoreSaveStatus('saved')
       }
     })
   }, [roundEnded, user])
@@ -338,7 +334,6 @@ export default function AimTrainer({ task, onBack }: Props) {
     setMisses(0)
     setMaxStreak(0)
     setRoundEnded(false)
-    setScoreSaveStatus('idle')
     setTimeLeftSec(taskRef.current.roundDuration)
     endAtRef.current = 0
     nextSpawnAtRef.current = 0

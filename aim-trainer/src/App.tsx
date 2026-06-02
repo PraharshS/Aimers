@@ -7,6 +7,7 @@ import ProfilePage from './components/ProfilePage'
 import Leaderboard from './components/Leaderboard'
 import TaskCreator from './components/TaskCreator'
 import { ReactionTest } from './components/ReactionTest'
+import { SplashScreen } from './components/SplashScreen'
 import { saveCustomTask } from './taskStorage'
 import { pingSupabase } from './lib/supabase'
 import './App.css'
@@ -19,6 +20,7 @@ export default function App() {
   const [creatorOpen, setCreatorOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<TaskConfig | null>(null)
   const [landingKey, setLandingKey]   = useState(0)
+  const [splashComplete, setSplashComplete] = useState(false)
 
   useEffect(() => {
     pingSupabase()
@@ -57,6 +59,8 @@ export default function App() {
 
   return (
     <AuthProvider>
+      {!splashComplete && <SplashScreen onComplete={() => setSplashComplete(true)} />}
+
       {view === 'game' && runningTask ? (
         <AimTrainer task={runningTask} onBack={handleBack} />
       ) : view === 'profile' ? (
