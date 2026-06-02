@@ -42,6 +42,7 @@ export type Profile = {
   created_at: string
   dpi: number
   valorant_sens: number
+  avatar_url?: string
 }
 
 export type ScoreRow = {
