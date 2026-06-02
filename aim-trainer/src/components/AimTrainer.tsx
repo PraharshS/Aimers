@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import {
   DEFAULT_DPI,
   DEFAULT_VALORANT_SENS,
@@ -167,6 +167,7 @@ export default function AimTrainer({ task, onBack }: Props) {
   const [roundEnded, setRoundEnded] = useState(false)
   const [scoreSaveStatus, setScoreSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [personalScores, setPersonalScores] = useState<{ label: string; score: number }[]>([])
+  const [personalAccuracy, setPersonalAccuracy] = useState<{ label: string; accuracy: number }[]>([])
   const [personalHighScore, setPersonalHighScore] = useState(0)
   const [timeLeftSec, setTimeLeftSec] = useState(task.roundDuration)
   const [activeTab, setActiveTab] = useState<SettingsTab>('dot')
@@ -211,7 +212,7 @@ export default function AimTrainer({ task, onBack }: Props) {
     if (!roundEnded || !user) return
     supabase
       .from('scores')
-      .select('score, played_at')
+      .select('score, hits, misses, played_at')
       .eq('user_id', user.id)
       .eq('task_id', taskRef.current.id)
       .order('played_at', { ascending: true })
@@ -221,7 +222,16 @@ export default function AimTrainer({ task, onBack }: Props) {
           label: `#${i + 1}`,
           score: row.score,
         }))
+        const accuracyData = (data ?? []).map((row, i) => {
+          const total = (row.hits ?? 0) + (row.misses ?? 0)
+          const acc = total > 0 ? Math.round((row.hits / total) * 100) : 0
+          return {
+            label: `#${i + 1}`,
+            accuracy: acc,
+          }
+        })
         setPersonalScores(scores)
+        setPersonalAccuracy(accuracyData)
         const high = Math.max(0, ...(data?.map(r => r.score) ?? [0]))
         setPersonalHighScore(high)
       })
@@ -853,24 +863,45 @@ export default function AimTrainer({ task, onBack }: Props) {
             </div>
 
             {user && personalScores.length > 0 && (
-              <div className="aimResultsChart">
-                <div className="aimChartLabel">Your Performance</div>
-                <ResponsiveContainer width="100%" height={120}>
-                  <LineChart data={personalScores} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="2 2" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} />
-                    <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} width={30} />
-                    <Tooltip
-                      contentStyle={{ background: 'rgba(3,8,18,0.95)', border: '1px solid rgba(88,214,255,0.2)', borderRadius: '4px', fontSize: 11 }}
-                      formatter={(value) => value}
-                    />
-                    <Line type="monotone" dataKey="score" stroke="#58d6ff" dot={false} isAnimationActive={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-                <div className="aimChartStats">
-                  <div><span>High Score:</span> <strong>{personalHighScore.toLocaleString()}</strong></div>
-                  <div><span>Current:</span> <strong>{score.toLocaleString()}</strong></div>
+              <div className="aimResultsCharts">
+                <div className="aimResultsChart">
+                  <div className="aimChartLabel">Score Trend</div>
+                  <ResponsiveContainer width="100%" height={120}>
+                    <LineChart data={personalScores} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="rgba(255,255,255,0.05)" />
+                      <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} width={35} />
+                      <Tooltip
+                        contentStyle={{ background: 'rgba(3,8,18,0.95)', border: '1px solid rgba(88,214,255,0.2)', borderRadius: '4px', fontSize: 11 }}
+                        formatter={(value) => value}
+                      />
+                      <Line type="monotone" dataKey="score" stroke="#58d6ff" dot={false} isAnimationActive={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div className="aimChartStats">
+                    <div><span>High:</span> <strong>{personalHighScore.toLocaleString()}</strong></div>
+                    <div><span>Current:</span> <strong>{score.toLocaleString()}</strong></div>
+                  </div>
                 </div>
+
+                {personalAccuracy.length > 0 && (
+                  <div className="aimResultsChart">
+                    <div className="aimChartLabel">Accuracy Trend</div>
+                    <ResponsiveContainer width="100%" height={120}>
+                      <LineChart data={personalAccuracy} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="2 2" stroke="rgba(255,255,255,0.05)" />
+                        <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} width={35} domain={[0, 100]} />
+                        <Tooltip
+                          contentStyle={{ background: 'rgba(3,8,18,0.95)', border: '1px solid rgba(88,214,255,0.2)', borderRadius: '4px', fontSize: 11 }}
+                          formatter={(value) => `${value}%`}
+                        />
+                        <Line type="monotone" dataKey="accuracy" stroke="#58ff8c" dot={false} isAnimationActive={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                    <div className="aimChartStats">
+                      <div><span>Current:</span> <strong>{accuracy}%</strong></div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -890,13 +921,13 @@ export default function AimTrainer({ task, onBack }: Props) {
                 <div className="aimResultsKpiValue">×{maxStreak}</div>
               </div>
             </div>
-            {user && (
+            {/* {user && (
               <div className="aimResultsSaveStatus">
                 {scoreSaveStatus === 'saving' && <span className="aimSaveLabel">Saving…</span>}
                 {scoreSaveStatus === 'saved'  && <span className="aimSaveLabel isSaved"><i className="fa-solid fa-check" /> Saved</span>}
                 {scoreSaveStatus === 'error'  && <span className="aimSaveLabel isError"><i className="fa-solid fa-triangle-exclamation" /> Failed to save</span>}
               </div>
-            )}
+            )} */}
             <div className="aimResultsActions">
               <button
                 type="button"

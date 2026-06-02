@@ -6,11 +6,12 @@ import LandingPage from './components/LandingPage'
 import ProfilePage from './components/ProfilePage'
 import Leaderboard from './components/Leaderboard'
 import TaskCreator from './components/TaskCreator'
+import { ReactionTest } from './components/ReactionTest'
 import { saveCustomTask } from './taskStorage'
 import { pingSupabase } from './lib/supabase'
 import './App.css'
 
-type AppView = 'landing' | 'game' | 'profile' | 'leaderboard'
+type AppView = 'landing' | 'game' | 'profile' | 'leaderboard' | 'reaction'
 
 export default function App() {
   const [view, setView]               = useState<AppView>('landing')
@@ -62,6 +63,8 @@ export default function App() {
         <ProfilePage onBack={() => setView('landing')} />
       ) : view === 'leaderboard' ? (
         <Leaderboard onBack={() => setView('landing')} />
+      ) : view === 'reaction' ? (
+        <ReactionTest onBack={() => setView('landing')} />
       ) : (
         <LandingPage
           key={landingKey}
@@ -70,6 +73,7 @@ export default function App() {
           onEditTask={handleEditTask}
           onViewProfile={() => setView('profile')}
           onViewLeaderboard={() => setView('leaderboard')}
+          onViewReaction={() => setView('reaction')}
         />
       )}
 

@@ -12,6 +12,7 @@ type Props = {
   onEditTask: (task: TaskConfig) => void
   onViewProfile: () => void
   onViewLeaderboard: () => void
+  onViewReaction: () => void
 }
 
 function DrillIcon({ taskId, size = 18 }: { taskId: string; size?: number }) {
@@ -61,7 +62,7 @@ function DrillIcon({ taskId, size = 18 }: { taskId: string; size?: number }) {
   )
 }
 
-export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, onViewProfile, onViewLeaderboard }: Props) {
+export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, onViewProfile, onViewLeaderboard, onViewReaction }: Props) {
   const { user, profile, signOut } = useAuth()
   const [customTasks, setCustomTasks] = useState<TaskConfig[]>([])
   const [authOpen, setAuthOpen] = useState(false)
@@ -101,6 +102,15 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
 
   const allTasks = [...BUILT_IN_TASKS, ...customTasks]
 
+  // Dummy live players data
+  const livePlayers = [
+    { id: '1', username: 'Apex', task: 'Tracking', score: 2840, status: 'playing' },
+    { id: '2', username: 'Shadow', task: 'Flicking', score: 1920, status: 'playing' },
+    { id: '3', username: 'Nova', task: 'Precision', score: 3150, status: 'finished' },
+    { id: '4', username: 'Blaze', task: 'Speed', score: 2560, status: 'playing' },
+    { id: '5', username: 'Cipher', task: 'Gridshot', score: 2100, status: 'finished' },
+  ]
+
   return (
     <div className="landingPage">
       {/* Topbar */}
@@ -114,6 +124,9 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
         <div className="gxTopbarAuth">
           {user && profile ? (
             <>
+              <button type="button" className="gxBtn isSm" onClick={onViewReaction}>
+                <i className="fa-solid fa-bolt" style={{ fontSize: 11 }} /> Reaction
+              </button>
               <button type="button" className="gxBtn isSm" onClick={onViewLeaderboard}>
                 <i className="fa-solid fa-trophy" style={{ fontSize: 11 }} /> Board
               </button>
@@ -126,6 +139,9 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
             </>
           ) : (
             <>
+              <button type="button" className="gxBtn isSm" onClick={onViewReaction}>
+                <i className="fa-solid fa-bolt" style={{ fontSize: 11 }} /> Reaction
+              </button>
               <button type="button" className="gxBtn isSm" onClick={onViewLeaderboard}>
                 <i className="fa-solid fa-trophy" style={{ fontSize: 11 }} /> Board
               </button>
@@ -138,6 +154,15 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
       </div>
 
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+
+      {/* Hero Section */}
+      <div className="landingHero">
+        <div className="landingHeroContent">
+          <h1 className="landingHeroTitle">TEST YOUR AIM</h1>
+          <p className="landingHeroSubtitle">AIMERS</p>
+          <p className="landingHeroDesc">Master your aim through precision training drills and competitive challenges</p>
+        </div>
+      </div>
 
       <div className="landingLayout">
         {/* Side rail */}
@@ -164,35 +189,36 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
         </nav>
 
         {/* Main content */}
-        <main className="landingMain">
-          <div className="landingHeaderRow">
-            <div>
-              <div className="landingLabel">drills · catalog</div>
-              <h1 className="landingTitle">
-                All modes{' '}
-                <span className="landingTitleMuted">· {String(allTasks.length).padStart(2, '0')}</span>
-              </h1>
+        <main className="landingMainWithSidebar">
+          <div className="landingMainCol">
+            <div className="landingHeaderRow">
+              <div>
+                <div className="landingLabel">drills · catalog</div>
+                <h1 className="landingTitle">
+                  All modes{' '}
+                  <span className="landingTitleMuted">· {String(allTasks.length).padStart(2, '0')}</span>
+                </h1>
+              </div>
+              <div className="landingActions">
+                <button
+                  type="button"
+                  className="gxBtn isSm"
+                  onClick={onOpenCreator}
+                >
+                  + custom
+                </button>
+                <button
+                  type="button"
+                  className="gxBtn isPrimary isSm"
+                  onClick={() => onSelectTask(allTasks[0])}
+                >
+                  ▸ quick start
+                </button>
+              </div>
             </div>
-            <div className="landingActions">
-              <button
-                type="button"
-                className="gxBtn isSm"
-                onClick={onOpenCreator}
-              >
-                + custom
-              </button>
-              <button
-                type="button"
-                className="gxBtn isPrimary isSm"
-                onClick={() => onSelectTask(allTasks[0])}
-              >
-                ▸ quick start
-              </button>
-            </div>
-          </div>
 
-          {/* Drill grid */}
-          <div className="drillGrid">
+            {/* Drill grid */}
+            <div className="drillGrid">
             {allTasks.map((task, i) => (
               <div
                 key={task.id}
@@ -237,18 +263,41 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
               </div>
             ))}
 
-            {/* Create task card */}
-            <button
-              type="button"
-              className="drillCard drillCardCreate"
-              onClick={onOpenCreator}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round">
-                <path d="M 12 5 V 19 M 5 12 H 19" />
-              </svg>
-              <span className="drillCardCreateLabel">custom</span>
-            </button>
+              {/* Create task card */}
+              <button
+                type="button"
+                className="drillCard drillCardCreate"
+                onClick={onOpenCreator}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round">
+                  <path d="M 12 5 V 19 M 5 12 H 19" />
+                </svg>
+                <span className="drillCardCreateLabel">custom</span>
+              </button>
+            </div>
           </div>
+
+          {/* Live players sidebar */}
+          <aside className="landingSidebar">
+            <div className="landingSidebarCard">
+              <div className="landingSidebarHeader">
+                <span className="landingSidebarTitle">AIMERS ONLINE</span>
+                <span className="landingOnlineBadge">{livePlayers.length}</span>
+              </div>
+              <div className="landingPlayersList">
+                {livePlayers.map((player) => (
+                  <div key={player.id} className={`landingPlayerItem ${player.status}`}>
+                    <div className="landingPlayerDot" />
+                    <div className="landingPlayerInfo">
+                      <div className="landingPlayerName">{player.username}</div>
+                      <div className="landingPlayerTask">{player.task}</div>
+                    </div>
+                    <div className="landingPlayerScore">{player.score.toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
         </main>
       </div>
 
