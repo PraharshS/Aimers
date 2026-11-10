@@ -35,6 +35,19 @@ def validate_username_value(value: str, exclude_pk=None) -> str:
     return value
 
 
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    """Fields a player may change about themselves. Email and avatar are not here."""
+
+    username = serializers.CharField(max_length=24, required=False)
+
+    class Meta:
+        model = User
+        fields = ["username", "dpi", "valorant_sens"]
+
+    def validate_username(self, value):
+        return validate_username_value(value, exclude_pk=self.instance.pk)
+
+
 class LoginSerializer(serializers.Serializer):
     identifier = serializers.CharField(max_length=254)  # email or username
     password = serializers.CharField(trim_whitespace=False, max_length=128)

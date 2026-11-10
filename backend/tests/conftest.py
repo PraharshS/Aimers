@@ -11,6 +11,19 @@ def api_client():
 
 
 @pytest.fixture
+def auth_client(make_user):
+    """An APIClient signed in (real access token) as a user named 'ace'."""
+    user = make_user("ace")
+    client = APIClient()
+    response = client.post(
+        "/api/v1/auth/login/", {"identifier": "ace", "password": PASSWORD}, format="json"
+    )
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.json()['access']}")
+    client.user = user
+    return client
+
+
+@pytest.fixture
 def make_user(db):
     def _make(username="ace", email=None, password=PASSWORD, **extra):
         return get_user_model().objects.create_user(
