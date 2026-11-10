@@ -9,7 +9,6 @@ import TaskCreator from './components/TaskCreator'
 import { ReactionTest } from './components/ReactionTest'
 import { SplashScreen } from './components/SplashScreen'
 import { saveCustomTask } from './taskStorage'
-import { pingSupabase } from './lib/supabase'
 import './App.css'
 
 type AppView = 'landing' | 'game' | 'profile' | 'leaderboard' | 'reaction'
@@ -21,10 +20,6 @@ export default function App() {
   const [editingTask, setEditingTask] = useState<TaskConfig | null>(null)
   const [landingKey, setLandingKey]   = useState(0)
   const [splashComplete, setSplashComplete] = useState(false)
-
-  useEffect(() => {
-    pingSupabase()
-  }, [])
 
   const runningTask = activeTask
 
