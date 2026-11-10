@@ -3,6 +3,8 @@ from django.db.models import Max
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.generics import ListAPIView
+from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -95,3 +97,41 @@ class FinishRunView(APIView):
         )
         is_pb = not run.flagged and (previous_best is None or run.score > previous_best)
         return {**RunSerializer(run).data, "personal_best": is_pb}
+
+
+class HistoryPagination(CursorPagination):
+    """Keyset ("cursor") pagination: stable and fast on large histories, unlike OFFSET."""
+
+    page_size = 50
+    page_size_query_param = "limit"
+    max_page_size = 200
+    ordering = "-finished_at"
+
+
+class MyRunsView(ListAPIView):
+    """The signed-in player's finished runs, newest first. Optional ?task_id=."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = RunSerializer
+    pagination_class = HistoryPagination
+
+    def get_queryset(self):
+        qs = Run.objects.filter(user=self.request.user, status=Run.Status.FINISHED)
+        task_id = self.request.query_params.get("task_id")
+        if task_id:
+            qs = qs.filter(task_id=task_id)
+        return qs
+
+
+class MyBestsView(APIView):
+    """Personal best score per task (flagged runs do not count)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        rows = (
+            Run.objects.filter(user=request.user, status=Run.Status.FINISHED, flagged=False)
+            .values("task_id")
+            .annotate(best=Max("score"))
+        )
+        return Response({"bests": {row["task_id"]: row["best"] for row in rows}})
