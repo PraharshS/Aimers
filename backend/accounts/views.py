@@ -7,12 +7,14 @@ from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import LoginSerializer, ProfileUpdateSerializer, RegisterSerializer, UserSerializer
+from .throttles import LoginIdentifierThrottle
 from .tokens import clear_refresh_cookie, has_csrf_header, issue_session, set_refresh_cookie
 
 User = get_user_model()
@@ -32,6 +34,8 @@ def session_response(user, http_status=status.HTTP_200_OK) -> Response:
 class RegisterView(APIView):
     permission_classes = [AllowAny]
     authentication_classes: list = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth_register"
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -43,6 +47,8 @@ class RegisterView(APIView):
 class LoginView(APIView):
     permission_classes = [AllowAny]
     authentication_classes: list = []
+    throttle_classes = [ScopedRateThrottle, LoginIdentifierThrottle]
+    throttle_scope = "auth_login"
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -81,6 +87,8 @@ class RefreshView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes: list = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth_refresh"
 
     def post(self, request):
         if not has_csrf_header(request):

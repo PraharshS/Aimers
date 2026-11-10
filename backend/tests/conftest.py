@@ -1,8 +1,15 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from rest_framework.test import APIClient
 
 PASSWORD = "s3cure-pass-1"
+
+
+@pytest.fixture(autouse=True)
+def _reset_throttle_counters():
+    """Throttle counters live in the cache; start every test with a clean slate."""
+    cache.clear()
 
 
 @pytest.fixture

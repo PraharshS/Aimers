@@ -122,7 +122,15 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": [],
-    "DEFAULT_THROTTLE_RATES": {},
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_login": "10/min",  # per client IP
+        "login_identifier": "5/min",  # per account name, any IP
+        "auth_register": "5/hour",  # per client IP
+        "auth_refresh": "60/min",  # per client IP
+    },
+    # Number of trusted reverse proxies in front of the app. 0 = use the socket
+    # address; otherwise a client-sent X-Forwarded-For could dodge IP throttles.
+    "NUM_PROXIES": int(os.environ.get("THROTTLE_NUM_PROXIES", "0")),
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
 }
 
