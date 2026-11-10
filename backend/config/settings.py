@@ -146,6 +146,13 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
+# --- Refresh-token cookie. Use SameSite=None (and Secure) only if the frontend and
+# API are on different sites; the custom-header check in accounts.tokens covers CSRF.
+REFRESH_COOKIE_NAME = "aimers_refresh"
+REFRESH_COOKIE_PATH = "/api/v1/auth/"
+REFRESH_COOKIE_SAMESITE = os.environ.get("REFRESH_COOKIE_SAMESITE", "Lax")
+REFRESH_COOKIE_SECURE = env_bool("REFRESH_COOKIE_SECURE", not DEBUG) or REFRESH_COOKIE_SAMESITE == "None"
+
 # --- Production hardening (only when DEBUG is off)
 if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", True)

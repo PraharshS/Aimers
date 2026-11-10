@@ -35,6 +35,11 @@ def validate_username_value(value: str, exclude_pk=None) -> str:
     return value
 
 
+class LoginSerializer(serializers.Serializer):
+    identifier = serializers.CharField(max_length=254)  # email or username
+    password = serializers.CharField(trim_whitespace=False, max_length=128)
+
+
 class RegisterSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=24)
     email = serializers.EmailField()
