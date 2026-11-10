@@ -7,6 +7,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+import dj_database_url
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -73,12 +75,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# Django's default SQLite file. Replaced by PostgreSQL in the next commit.
+# PostgreSQL by default. conn_max_age keeps connections open between requests
+# (cheaper than reconnecting each time; a pooler such as pgbouncer comes later).
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.config(
+        env="DATABASE_URL",
+        default="postgres://aimers:aimers@localhost:5432/aimers",
+        conn_max_age=60,
+    )
 }
 
 # Argon2 first: the strongest default hasher Django supports.
