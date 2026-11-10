@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     # local apps
     "accounts",
+    "runs",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -127,6 +128,8 @@ REST_FRAMEWORK = {
         "login_identifier": "5/min",  # per account name, any IP
         "auth_register": "5/hour",  # per client IP
         "auth_refresh": "60/min",  # per client IP
+        "runs_start": "30/min",  # per player
+        "runs_finish": "30/min",  # per player
     },
     # Number of trusted reverse proxies in front of the app. 0 = use the socket
     # address; otherwise a client-sent X-Forwarded-For could dodge IP throttles.

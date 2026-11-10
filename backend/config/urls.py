@@ -28,4 +28,5 @@ urlpatterns = [
     path("api/v1/health/", health, name="health"),
     path("api/v1/health/ready/", ready, name="ready"),
     path("api/v1/", include("accounts.urls")),
+    path("api/v1/", include("runs.urls")),
 ]
