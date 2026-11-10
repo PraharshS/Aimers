@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { supabase } from '../lib/supabase'
-import type { ScoreRow } from '../lib/supabase'
+import * as api from '../lib/api'
+import type { ScoreRow, TrendPoint } from '../lib/api'
 import { BUILT_IN_TASKS } from '../types'
 
 type Props = {
@@ -13,35 +13,16 @@ type ChartDataPoint = { label: string; score: number; count: number }
 
 const ALL_TASKS = [{ id: 'all', name: 'All Tasks' }, ...BUILT_IN_TASKS.map(t => ({ id: t.id, name: t.name }))]
 
-function aggregateByPeriod(rows: ScoreRow[], period: TimePeriod): ChartDataPoint[] {
-  const map = new Map<string, { sum: number; count: number }>()
+/** Axis label for a trend bucket (the API returns UTC timestamps; show them in local time). */
+function labelFor(bucket: string, period: TimePeriod): string {
+  const date = new Date(bucket)
+  if (period === 'hourly') return `${date.getHours().toString().padStart(2, '0')}:00`
+  const day = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return period === 'weekly' ? `W ${day}` : day
+}
 
-  for (const row of rows) {
-    const date = new Date(row.played_at)
-    let label = ''
-
-    if (period === 'hourly') {
-      const h = date.getHours().toString().padStart(2, '0')
-      label = `${h}:00`
-    } else if (period === 'daily') {
-      label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    } else {
-      const weekStart = new Date(date)
-      weekStart.setDate(date.getDate() - date.getDay())
-      label = `W ${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-    }
-
-    const existing = map.get(label) ?? { sum: 0, count: 0 }
-    existing.sum += row.score
-    existing.count += 1
-    map.set(label, existing)
-  }
-
-  return Array.from(map.entries()).map(([label, { sum, count }]) => ({
-    label,
-    score: Math.round(sum / count),
-    count,
-  }))
+function toChartData(points: TrendPoint[], period: TimePeriod): ChartDataPoint[] {
+  return points.map((p) => ({ label: labelFor(p.bucket, period), score: p.score, count: p.count }))
 }
 
 export default function Leaderboard({ onBack }: Props) {
@@ -52,21 +33,28 @@ export default function Leaderboard({ onBack }: Props) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
-    let q = supabase
-      .from('scores')
-      .select('*, profiles(username)')
-      .order('played_at', { ascending: false })
-      .limit(100)
-
-    if (selectedTask !== 'all') q = q.eq('task_id', selectedTask)
-
-    q.then(({ data }) => {
-      const scores = (data as ScoreRow[]) ?? []
-      setRows(scores.sort((a, b) => b.score - a.score).slice(0, 25))
-      setChartData(aggregateByPeriod(scores, timePeriod))
-      setLoading(false)
-    })
+    Promise.all([
+      api.getLeaderboard({ task: selectedTask, period: 'all', limit: 25 }),
+      api.getTrend({ task: selectedTask, period: timePeriod }),
+    ])
+      .then(([board, trend]) => {
+        if (cancelled) return
+        setRows(board)
+        setChartData(toChartData(trend, timePeriod))
+      })
+      .catch(() => {
+        if (cancelled) return
+        setRows([])
+        setChartData([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [selectedTask, timePeriod])
 
   return (
@@ -140,11 +128,11 @@ export default function Leaderboard({ onBack }: Props) {
             </thead>
             <tbody>
               {rows.map((row, i) => (
-                <tr key={row.id} className={i < 3 ? `lbTop${i + 1}` : ''}>
+                <tr key={`${row.rank}-${row.username}`} className={i < 3 ? `lbTop${i + 1}` : ''}>
                   <td className="lbRank">
                     {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
                   </td>
-                  <td className="lbPlayer">{row.profiles?.username ?? '—'}</td>
+                  <td className="lbPlayer">{row.username ?? '—'}</td>
                   {selectedTask === 'all' && <td className="lbTask">{row.task_name}</td>}
                   <td className="lbScore">{row.score}</td>
                   <td className="lbAccuracy">{(row.accuracy * 100).toFixed(0)}%</td>

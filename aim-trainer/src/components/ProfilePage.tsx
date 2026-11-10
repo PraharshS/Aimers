@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import type { ScoreRow } from '../lib/supabase'
+import * as api from '../lib/api'
+import { errorMessage } from '../lib/api'
+import type { Profile, ScoreRow } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { BUILT_IN_TASKS } from '../types'
 
@@ -11,7 +12,7 @@ type Props = {
 type BestByTask = Record<string, ScoreRow>
 
 export default function ProfilePage({ onBack }: Props) {
-  const { profile, user, signOut } = useAuth()
+  const { profile, user, signOut, setProfile } = useAuth()
   const [scores, setScores] = useState<ScoreRow[]>([])
   const [loading, setLoading] = useState(true)
   const [editOpen, setEditOpen] = useState(false)
@@ -19,20 +20,24 @@ export default function ProfilePage({ onBack }: Props) {
   const [photoZoom, setPhotoZoom] = useState(1)
   const [photoFile, setPhotoFile] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!user) return
-    supabase
-      .from('scores')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('played_at', { ascending: false })
-      .limit(200)
-      .then(({ data }) => {
-        setScores((data as ScoreRow[]) ?? [])
-        setLoading(false)
+    let cancelled = false
+    api
+      .getMyRuns({ limit: 200 })
+      .then((runs) => {
+        if (!cancelled) setScores(runs)
       })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [user])
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,38 +52,28 @@ export default function ProfilePage({ onBack }: Props) {
   }
 
   const handleSaveProfile = async () => {
-    if (!user) return
+    if (!user || !profile) return
     setUploading(true)
+    setSaveError('')
     try {
-      let avatarUrl = profile?.avatar_url
+      let updated: Profile | null = null
 
-      // Upload photo if selected
       if (photoFile) {
-        const fileName = `${user.id}-${Date.now()}.jpg`
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(fileName, await fetch(photoFile).then(r => r.blob()), { upsert: true })
-
-        if (uploadError) throw uploadError
-
-        const { data } = supabase.storage.from('avatars').getPublicUrl(fileName)
-        avatarUrl = data.publicUrl
+        const blob = await fetch(photoFile).then((r) => r.blob())
+        updated = await api.uploadAvatar(blob)
       }
 
-      // Update profile
-      const { error } = await supabase
-        .from('profiles')
-        .update({ username: editUsername, avatar_url: avatarUrl })
-        .eq('id', user.id)
+      const username = editUsername.trim()
+      if (username && username !== profile.username) {
+        updated = await api.updateMe({ username })
+      }
 
-      if (error) throw error
-
+      if (updated) setProfile(updated)
       setEditOpen(false)
       setPhotoFile(null)
       setPhotoZoom(1)
-      window.location.reload() // Reload to show updated profile
     } catch (err) {
-      console.error('Error saving profile:', err)
+      setSaveError(errorMessage(err, 'Could not save your profile.'))
     } finally {
       setUploading(false)
     }
@@ -228,6 +223,7 @@ export default function ProfilePage({ onBack }: Props) {
               </div>
 
               {/* Save Button */}
+              {saveError && <p className="authError">{saveError}</p>}
               <button
                 type="button"
                 className="gxBtn isPrimary"
@@ -299,7 +295,7 @@ export default function ProfilePage({ onBack }: Props) {
               </thead>
               <tbody>
                 {scores.slice(0, 15).map(row => (
-                  <tr key={row.id}>
+                  <tr key={row.id ?? row.played_at}>
                     <td className="lbTask">{row.task_name}</td>
                     <td className="lbScore">{row.score}</td>
                     <td className="lbAccuracy">{(row.accuracy * 100).toFixed(0)}%</td>
