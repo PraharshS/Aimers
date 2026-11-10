@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.db import DatabaseError, connection
 from django.http import JsonResponse
@@ -30,3 +32,7 @@ urlpatterns = [
     path("api/v1/", include("accounts.urls")),
     path("api/v1/", include("runs.urls")),
 ]
+
+# In development Django serves uploaded files; in production the web server/CDN/S3 does.
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

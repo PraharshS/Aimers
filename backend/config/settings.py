@@ -111,6 +111,10 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Uploaded files (avatars). Local disk for development; object storage (S3) later.
+MEDIA_URL = "media/"
+MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media"))
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- CORS: only the frontend origins listed here may call the API with cookies.
@@ -131,6 +135,7 @@ REST_FRAMEWORK = {
         "runs_start": "30/min",  # per player
         "runs_finish": "30/min",  # per player
         "public_read": "120/min",  # leaderboard etc., per client IP
+        "avatar": "20/hour",  # per player
     },
     # Number of trusted reverse proxies in front of the app. 0 = use the socket
     # address; otherwise a client-sent X-Forwarded-For could dodge IP throttles.

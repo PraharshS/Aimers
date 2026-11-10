@@ -1,10 +1,12 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.files.storage import default_storage
 from django.contrib.auth.hashers import check_password, make_password
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -13,6 +15,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .avatar import InvalidAvatar, process_avatar
 from .serializers import LoginSerializer, ProfileUpdateSerializer, RegisterSerializer, UserSerializer
 from .throttles import LoginIdentifierThrottle
 from .tokens import clear_refresh_cookie, has_csrf_header, issue_session, set_refresh_cookie
@@ -79,6 +82,42 @@ class MeView(APIView):
         serializer = ProfileUpdateSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        return Response(UserSerializer(request.user).data)
+
+
+class AvatarView(APIView):
+    """Upload (POST multipart field "file") or remove (DELETE) the profile picture."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "avatar"
+
+    def post(self, request):
+        upload = request.FILES.get("file")
+        if upload is None:
+            return Response({"file": ["No file was submitted."]}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            content = process_avatar(upload)
+        except InvalidAvatar as exc:
+            return Response({"file": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
+
+        name = f"avatars/{request.user.id}.jpg"
+        if default_storage.exists(name):
+            default_storage.delete(name)
+        saved = default_storage.save(name, content)
+        # ?v= busts browser caches because the file name stays the same per player
+        url = request.build_absolute_uri(default_storage.url(saved)) + f"?v={int(timezone.now().timestamp())}"
+        request.user.avatar_url = url
+        request.user.save(update_fields=["avatar_url"])
+        return Response(UserSerializer(request.user).data)
+
+    def delete(self, request):
+        name = f"avatars/{request.user.id}.jpg"
+        if default_storage.exists(name):
+            default_storage.delete(name)
+        request.user.avatar_url = ""
+        request.user.save(update_fields=["avatar_url"])
         return Response(UserSerializer(request.user).data)
 
 
