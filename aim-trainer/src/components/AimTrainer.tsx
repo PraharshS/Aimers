@@ -9,7 +9,8 @@ import {
 import type { TaskConfig } from '../types'
 import { ThreeBackground } from '../renderer/ThreeBackground'
 import type { BackgroundType } from '../renderer/ThreeBackground'
-import { supabase } from '../lib/supabase'
+import * as api from '../lib/api'
+import type { RunConfig } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import popSoundUrl from '../assets/sounds/pop.mp3'
 
@@ -95,6 +96,17 @@ const DEFAULT_CROSSHAIR: CrosshairConfig = {
 }
 
 const CH_COLORS = ['#ffffff', '#00ff87', '#ffff00', '#00d4ff', '#ff00e0', '#ff4444']
+
+function runConfigFor(t: TaskConfig): RunConfig {
+  return {
+    roundDuration: t.roundDuration,
+    hitScore: t.hitScore,
+    missPenalty: t.missPenalty,
+    movementType: t.movementType,
+    maxTargets: t.maxTargets,
+    spawnDelay: t.spawnDelay,
+  }
+}
 
 function pad2(n: number) {
   return n.toString().padStart(2, '0')
@@ -194,7 +206,14 @@ export default function AimTrainer({ task, onBack }: Props) {
 
   const [crosshairDraft, setCrosshairDraft] = useState<CrosshairConfig>(DEFAULT_CROSSHAIR)
 
-  const { user, profile } = useAuth()
+  const { user, profile, setProfile } = useAuth()
+  // Latest signed-in state for code that runs from timers (round start) and may hold an old closure.
+  const userRef = useRef(user)
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
+  // Resolves to the server-side run id for the current round (null if it could not be opened).
+  const runRef = useRef<Promise<string | null>>(Promise.resolve(null))
 
   // Load DPI / sens from profile when it becomes available (overrides localStorage)
   useEffect(() => {
@@ -207,70 +226,51 @@ export default function AimTrainer({ task, onBack }: Props) {
     sensMultiplierRef.current = isFinite(mult) ? mult : 1.0
   }, [profile])
 
-  // Fetch personal scores for current task when round ends
+  // When the round ends (signed in): submit the result for server-side checking, then load
+  // the player's recent scores and best for this task.
   useEffect(() => {
     if (!roundEnded || !user) return
-    supabase
-      .from('scores')
-      .select('score, hits, misses, played_at')
-      .eq('user_id', user.id)
-      .eq('task_id', taskRef.current.id)
-      .order('played_at', { ascending: true })
-      .limit(10)
-      .then(({ data }) => {
-        const scores = (data ?? []).map((row, i) => ({
-          label: `#${i + 1}`,
-          score: row.score,
-        }))
-        const accuracyData = (data ?? []).map((row, i) => {
-          const total = (row.hits ?? 0) + (row.misses ?? 0)
-          const acc = total > 0 ? Math.round((row.hits / total) * 100) : 0
-          return {
-            label: `#${i + 1}`,
-            accuracy: acc,
-          }
-        })
-        setPersonalScores(scores)
-        setPersonalAccuracy(accuracyData)
-        const high = Math.max(0, ...(data?.map(r => r.score) ?? [0]))
-        setPersonalHighScore(high)
-      })
-  }, [roundEnded, user])
-
-  // Save score to Supabase when round ends (only if signed in)
-  useEffect(() => {
-    if (!roundEnded || !user) return
+    let cancelled = false
 
     const t = taskRef.current
     let hits = hitsRef.current
     let misses = missesRef.current
-    let accuracy = 0
 
-    // For tracking tasks, use on-target/off-target time instead
+    // For tracking tasks, use on-target/off-target time (tenths of a second) instead
     if (t.movementType !== 'stationary') {
-      hits = Math.round(trackingOnTargetMsRef.current / 100) // convert ms to tenths of seconds
+      hits = Math.round(trackingOnTargetMsRef.current / 100)
       misses = Math.round(trackingOffTargetMsRef.current / 100)
-      const total = hits + misses
-      accuracy = total > 0 ? hits / total : 0
-    } else {
-      const totalShots = hits + misses
-      accuracy = totalShots > 0 ? hits / totalShots : 0
     }
 
-    supabase.from('scores').insert({
-      user_id: user.id,
-      task_id: t.id,
-      task_name: t.name,
-      score: scoreRef.current,
-      hits,
-      misses,
-      accuracy,
-      duration: t.roundDuration,
-    }).then(({ error }) => {
-      if (error) {
-        console.error('[Scores] Failed to save score:', error.message)
+    ;(async () => {
+      setScoreSaveStatus('saving')
+      try {
+        const runId = await runRef.current
+        if (!runId) throw new Error('No run was opened for this round')
+        await api.finishRun(runId, { score: scoreRef.current, hits, misses })
+        if (cancelled) return
+        setScoreSaveStatus('saved')
+
+        const [recent, bests] = await Promise.all([
+          api.getMyRuns({ taskId: t.id, limit: 10 }),
+          api.getMyBests(),
+        ])
+        if (cancelled) return
+        const oldestFirst = [...recent].reverse()
+        setPersonalScores(oldestFirst.map((row, i) => ({ label: `#${i + 1}`, score: row.score })))
+        setPersonalAccuracy(
+          oldestFirst.map((row, i) => ({ label: `#${i + 1}`, accuracy: Math.round(row.accuracy * 100) })),
+        )
+        setPersonalHighScore(bests[t.id] ?? 0)
+      } catch (err) {
+        console.error('[Runs] Failed to save score:', err)
+        if (!cancelled) setScoreSaveStatus('error')
       }
-    })
+    })()
+
+    return () => {
+      cancelled = true
+    }
   }, [roundEnded, user])
 
   const spawnDot = (id: number): Dot => {
@@ -341,6 +341,7 @@ export default function AimTrainer({ task, onBack }: Props) {
     panRef.current = { x: 0, y: 0 }
     nextIdRef.current = 1
     lastPointerRef.current = null
+    runRef.current = Promise.resolve(null)
   }
 
   const startRound = () => {
@@ -370,6 +371,18 @@ export default function AimTrainer({ task, onBack }: Props) {
     endAtRef.current = now + t.roundDuration * 1000
     nextSpawnAtRef.current = now + 350
     lastPointerRef.current = null
+
+    // Ask the server to open a run (signed-in players only; guests just play).
+    setScoreSaveStatus('idle')
+    runRef.current = userRef.current
+      ? api
+          .startRun(t.id, t.name, runConfigFor(t))
+          .then((run) => run.id)
+          .catch((err) => {
+            console.error('[Runs] Could not start run:', err)
+            return null
+          })
+      : Promise.resolve(null)
   }
 
   const startCountdown = () => {
@@ -798,7 +811,10 @@ export default function AimTrainer({ task, onBack }: Props) {
     crosshairRef.current = crosshairDraft
     localStorage.setItem('aimers-bg', backgroundType)
     if (user) {
-      supabase.from('profiles').update({ dpi, valorant_sens: valorantSens }).eq('id', user.id)
+      api
+        .updateMe({ dpi, valorant_sens: valorantSens })
+        .then(setProfile)
+        .catch((err) => console.error('[Profile] Could not save mouse settings:', err))
     }
     setSettingsOpen(false)
   }
