@@ -3,7 +3,7 @@ import type { TaskConfig } from '../types'
 import { BUILT_IN_TASKS } from '../types'
 import { deleteCustomTask, loadCustomTasks } from '../taskStorage'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
+import * as api from '../lib/api'
 import AuthModal from './AuthModal'
 
 type Props = {
@@ -83,44 +83,35 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
   useEffect(() => {
     if (!user) { setPbMap({}); return }
     let isMounted = true
-    supabase
-      .from('scores')
-      .select('task_id, score')
-      .eq('user_id', user.id)
-      .order('score', { ascending: false })
-      .limit(100)
-      .then(({ data }) => {
-        if (!isMounted) return
-        const best: Record<string, number> = {}
-        for (const row of data ?? []) {
-          if (!best[row.task_id]) best[row.task_id] = row.score
-        }
-        setPbMap(best)
+    api
+      .getMyBests()
+      .then((bests) => {
+        if (isMounted) setPbMap(bests)
       })
+      .catch(() => {})
     return () => { isMounted = false }
   }, [user?.id])
 
-  // Fetch active users every 10 seconds
+  // Recently active players (finished a round in the last 24 hours); refresh every 10 seconds
   useEffect(() => {
-    const fetchActiveUsers = async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .limit(10)
-
-      if (data) {
-        const players = data.map(p => ({
-          id: p.id,
-          username: p.username || 'Anonymous',
-          status: 'Main menu',
-          score: Math.floor(Math.random() * 3000) + 1000, // Dummy score for display
-        }))
-        setLivePlayers(players)
+    const fetchRecentPlayers = async () => {
+      try {
+        const recent = await api.getRecentPlayers()
+        setLivePlayers(
+          recent.map((row) => ({
+            id: row.username ?? row.played_at,
+            username: row.username ?? 'Anonymous',
+            status: `Played ${row.task_name}`,
+            score: row.score,
+          })),
+        )
+      } catch {
+        // keep the previous list on a failed refresh
       }
     }
 
-    fetchActiveUsers()
-    const interval = setInterval(fetchActiveUsers, 10000) // Update every 10 seconds
+    fetchRecentPlayers()
+    const interval = setInterval(fetchRecentPlayers, 10000) // Update every 10 seconds
     return () => clearInterval(interval)
   }, [])
 
@@ -304,7 +295,7 @@ export default function LandingPage({ onSelectTask, onOpenCreator, onEditTask, o
           <aside className="landingSidebar">
             <div className="landingSidebarCard">
               <div className="landingSidebarHeader">
-                <span className="landingSidebarTitle">AIMERS ONLINE</span>
+                <span className="landingSidebarTitle">RECENT PLAYERS</span>
                 <span className="landingOnlineBadge">{livePlayers.length}</span>
               </div>
               <div className="landingPlayersList">

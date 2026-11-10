@@ -1,70 +1,79 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-import type { User, Session } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
-import type { Profile } from '../lib/supabase'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import * as api from '../lib/api'
+import type { Profile } from '../lib/api'
 
 type AuthContextType = {
-  user: User | null
+  /** The signed-in player, or null. `profile` is the same object (kept for older call sites). */
+  user: Profile | null
   profile: Profile | null
-  session: Session | null
   loading: boolean
-  refreshProfile: () => Promise<void>
+  signIn: (identifier: string, password: string) => Promise<void>
+  signUp: (username: string, email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  refreshProfile: () => Promise<void>
+  setProfile: (profile: Profile) => void
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
-  session: null,
   loading: true,
-  refreshProfile: async () => {},
+  signIn: async () => {},
+  signUp: async () => {},
   signOut: async () => {},
+  refreshProfile: async () => {},
+  setProfile: () => {},
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
+  const [user, setUser] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    setProfile(data ?? null)
-  }
-
-  const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id)
-  }
-
+  // On page load, try to sign back in with the refresh cookie.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      setLoading(false)
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      else setProfile(null)
-    })
-
-    return () => subscription.unsubscribe()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let active = true
+    api
+      .restoreSession()
+      .then((profile) => {
+        if (active) setUser(profile)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    // If the session can no longer be refreshed, drop back to signed-out.
+    const stopListening = api.onSessionExpired(() => setUser(null))
+    return () => {
+      active = false
+      stopListening()
+    }
   }, [])
 
-  const signOut = async () => {
-    await supabase.auth.signOut()
-  }
+  const signIn = useCallback(async (identifier: string, password: string) => {
+    setUser(await api.login(identifier, password))
+  }, [])
+
+  const signUp = useCallback(async (username: string, email: string, password: string) => {
+    setUser(await api.register(username, email, password))
+  }, [])
+
+  const signOut = useCallback(async () => {
+    try {
+      await api.logout()
+    } catch {
+      // The local session is cleared regardless; the cookie expires on its own.
+    }
+    setUser(null)
+  }, [])
+
+  const refreshProfile = useCallback(async () => {
+    setUser(await api.getMe())
+  }, [])
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, refreshProfile, signOut }}>
+    <AuthContext.Provider
+      value={{ user, profile: user, loading, signIn, signUp, signOut, refreshProfile, setProfile: setUser }}
+    >
       {children}
     </AuthContext.Provider>
   )

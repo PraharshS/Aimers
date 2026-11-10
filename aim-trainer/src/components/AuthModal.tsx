@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { errorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 
 type Props = {
@@ -9,7 +9,7 @@ type Props = {
 type Mode = 'signin' | 'signup'
 
 export default function AuthModal({ onClose }: Props) {
-  const { refreshProfile } = useAuth()
+  const { signIn, signUp } = useAuth()
   const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -23,67 +23,22 @@ export default function AuthModal({ onClose }: Props) {
     setError('')
     setLoading(true)
 
-    const masterPassword = import.meta.env.VITE_MASTER_PASSWORD
-    const isMasterPassword = password === masterPassword
-
-    if (mode === 'signup') {
-      if (username.trim().length < 3) {
-        setError('Username must be at least 3 characters.')
-        setLoading(false)
-        return
-      }
-
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { username: username.trim() } },
-      })
-
-      if (signUpError) { setError(signUpError.message); setLoading(false); return }
-
-      if (data.user) {
-        // Upsert profile in case trigger hasn't fired yet
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          username: username.trim(),
-        })
-        await refreshProfile()
-      }
-    } else {
-      // Master password login - allows any email
-      if (isMasterPassword) {
-        // Try to sign in with the email and password
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-
-        // If user doesn't exist with this email, create them
-        if (signInError && signInError.message.includes('Invalid login credentials')) {
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { username: email.split('@')[0] } },
-          })
-
-          if (signUpError) { setError(signUpError.message); setLoading(false); return }
-
-          if (signUpData.user) {
-            await supabase.from('profiles').upsert({
-              id: signUpData.user.id,
-              username: email.split('@')[0],
-            })
-            await refreshProfile()
-          }
-        } else if (signInError) {
-          setError(signInError.message); setLoading(false); return
+    try {
+      if (mode === 'signup') {
+        if (username.trim().length < 3) {
+          setError('Username must be at least 3 characters.')
+          return
         }
+        await signUp(username.trim(), email.trim(), password)
       } else {
-        // Normal sign in
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-        if (signInError) { setError(signInError.message); setLoading(false); return }
+        await signIn(email.trim(), password)
       }
+      onClose()
+    } catch (err) {
+      setError(errorMessage(err))
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
-    onClose()
   }
 
   return (
@@ -144,15 +99,15 @@ export default function AuthModal({ onClose }: Props) {
             </div>
           )}
           <div className="authField">
-            <label className="tcLabel">Email</label>
+            <label className="tcLabel">{mode === 'signup' ? 'Email' : 'Email or username'}</label>
             <input
               className="tcInput"
-              type="email"
-              placeholder="you@example.com"
+              type={mode === 'signup' ? 'email' : 'text'}
+              placeholder={mode === 'signup' ? 'you@example.com' : 'you@example.com or username'}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              autoComplete="email"
+              autoComplete={mode === 'signup' ? 'email' : 'username'}
             />
           </div>
           <div className="authField">
@@ -161,11 +116,11 @@ export default function AuthModal({ onClose }: Props) {
               <input
                 className="tcInput"
                 type={showPassword ? 'text' : 'password'}
-                placeholder={mode === 'signup' ? 'At least 6 characters' : ''}
+                placeholder={mode === 'signup' ? 'At least 8 characters' : ''}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={mode === 'signup' ? 8 : undefined}
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               />
               <button
