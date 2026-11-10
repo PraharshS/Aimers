@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.db import DatabaseError, connection
 from django.http import JsonResponse
-from django.urls import path
+from django.urls import include, path
 
 
 def health(_request):
@@ -27,4 +27,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/health/", health, name="health"),
     path("api/v1/health/ready/", ready, name="ready"),
+    path("api/v1/", include("accounts.urls")),
 ]

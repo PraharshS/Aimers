@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "drf_spectacular",
+    "rest_framework_simplejwt.token_blacklist",
     # local apps
     "accounts",
 ]
@@ -117,7 +118,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 # --- Django REST framework
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [],  # set when the auth app lands
+    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": [],
@@ -135,6 +136,15 @@ SPECTACULAR_SETTINGS = {
 # --- Token lifetimes (used by the auth app)
 ACCESS_TOKEN_LIFETIME = timedelta(minutes=int(os.environ.get("ACCESS_TOKEN_MINUTES", "15")))
 REFRESH_TOKEN_LIFETIME = timedelta(days=int(os.environ.get("REFRESH_TOKEN_DAYS", "14")))
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": ACCESS_TOKEN_LIFETIME,
+    "REFRESH_TOKEN_LIFETIME": REFRESH_TOKEN_LIFETIME,
+    "ROTATE_REFRESH_TOKENS": True,  # every refresh issues a new refresh token
+    "BLACKLIST_AFTER_ROTATION": True,  # and the old one stops working
+    "UPDATE_LAST_LOGIN": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
 
 # --- Production hardening (only when DEBUG is off)
 if not DEBUG:
