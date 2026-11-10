@@ -130,6 +130,7 @@ REST_FRAMEWORK = {
         "auth_refresh": "60/min",  # per client IP
         "runs_start": "30/min",  # per player
         "runs_finish": "30/min",  # per player
+        "public_read": "120/min",  # leaderboard etc., per client IP
     },
     # Number of trusted reverse proxies in front of the app. 0 = use the socket
     # address; otherwise a client-sent X-Forwarded-For could dodge IP throttles.
@@ -156,6 +157,9 @@ SIMPLE_JWT = {
     "UPDATE_LAST_LOGIN": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
+
+# --- Public read endpoints (leaderboard) are cached this many seconds.
+PUBLIC_CACHE_SECONDS = int(os.environ.get("PUBLIC_CACHE_SECONDS", "10"))
 
 # --- Refresh-token cookie. Use SameSite=None (and Secure) only if the frontend and
 # API are on different sites; the custom-header check in accounts.tokens covers CSRF.
